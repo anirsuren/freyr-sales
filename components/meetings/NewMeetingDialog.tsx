@@ -365,7 +365,8 @@ export function NewMeetingDialog({
   const dateIsNew = !meeting || meetingAt !== (meeting.meetingAt ?? "");
   const pastDate = !!meetingDate && dateIsNew && meetingDate < todayISO();
 
-  const ready = title.trim() && customerId && meetingAt && !pastDate;
+  const uploadingDocs = stagedDocs.some((doc) => doc.status === "uploading");
+  const ready = title.trim() && customerId && meetingAt && !pastDate && !uploadingDocs;
 
   /**
    * WHY THE BUTTON IS WAITING, said out loud (Anir, Sep 4: "don't make it like
@@ -386,7 +387,9 @@ export function NewMeetingDialog({
         ? "Say when it is."
         : pastDate
           ? "That date has already passed. Pick today or later."
-          : null;
+          : uploadingDocs
+            ? "Wait for your files to finish uploading."
+            : null;
 
   const body = (
     /* Fills the frame it is given rather than floating at the top of it: as a
@@ -802,7 +805,10 @@ export function NewMeetingDialog({
                 /* Only the ones that landed. A row that failed is still on
                    screen saying so, and carrying it would attach a document
                    with nothing behind it. */
-                docs: landedDocs(stagedDocs, "md"),
+                docs: landedDocs(stagedDocs, "md").map(({ name, ...doc }) => ({
+                  ...doc,
+                  label: name,
+                })),
               });
             } finally {
               setBusy(false);

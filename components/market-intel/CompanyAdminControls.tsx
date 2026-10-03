@@ -53,7 +53,7 @@ export function CompanyAdminControls({
 
   useEffect(() => {
     if (!menuOpen) return;
-    const onDown = (event: MouseEvent) => {
+    const onDown = (event: Event) => {
       const target = event.target as Node;
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       setMenuOpen(false);
@@ -67,11 +67,15 @@ export function CompanyAdminControls({
     };
     const onResize = () => setMenuOpen(false);
     document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("click", onDown, true);
+    document.addEventListener("focusin", onDown, true);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("click", onDown, true);
+      document.removeEventListener("focusin", onDown, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", onScroll, { capture: true });
       window.removeEventListener("resize", onResize);

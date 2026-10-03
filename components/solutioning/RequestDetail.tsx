@@ -650,8 +650,7 @@ export function RequestDetail({
             r.status !== "cancelled" &&
             (iRequested || managerial);
           const mayReopen =
-            (r.status === "completed" && (iRequested || managerial)) ||
-            (r.status === "cancelled" && (iRequested || iOwn || managerial));
+            r.status === "completed" && (iRequested || managerial);
           const mayCancel =
             r.status !== "cancelled" &&
             r.status !== "completed" &&
@@ -1844,27 +1843,24 @@ export function RequestDetail({
         open={commenting}
         onClose={() => setCommenting(false)}
         title="Add a comment"
-        size="wide"
-        /* THE FRAME DOES NOT MOVE. The larger canvas opens ready for a real
-           handoff note; staged files scroll inside instead of changing the
-           dialog's size or position. */
-        bodyClassName="min-h-[500px] max-h-[500px] flex flex-col"
+        size="default"
+        bodyClassName="flex flex-col"
       >
         <Textarea
-          rows={9}
+          rows={5}
           autoFocus
-          className="min-h-[270px] rounded-xl bg-white p-4 text-[14px] leading-relaxed"
+          className="min-h-[150px] max-h-[300px] resize-y rounded-xl bg-surface/40 p-3 text-[13px] leading-relaxed"
           value={comment}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
             setComment(e.target.value)
           }
-          placeholder="What the person picking this up next needs to know…"
+          placeholder="Write a comment or share an update…"
           aria-label="Comment"
         />
 
         {/* OPTIONAL FILES. A plain label-for-input, like every other picker
             here; each row wears the same progress bar the uploads all use. */}
-        <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary">
+        <label className="mt-3 inline-flex self-start cursor-pointer items-center gap-1.5 rounded-lg border border-border-light bg-white px-3 py-1.5 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary">
           <input
             type="file"
             multiple
@@ -1910,7 +1906,7 @@ export function RequestDetail({
           </ul>
         )}
 
-        <div className="mt-auto flex items-center justify-end gap-2 pt-4">
+        <div className="mt-5 flex items-center justify-end gap-2 border-t border-border-light pt-4">
           <button
             type="button"
             onClick={() => setCommenting(false)}

@@ -47,3 +47,9 @@ test("a record page path is never turned into a link", async () => {
   assert.equal(linkBarePaths("see `/customers/40a7a3c3-5a32-493d-827f-1c88a0cf0ec6`"), "see `/customers/40a7a3c3-5a32-493d-827f-1c88a0cf0ec6`");
   assert.equal(linkBarePaths("open /agent/settings"), "open [Settings](/agent/settings)");
 });
+
+test("malformed internal citation host is repaired without rewriting external hosts", async () => {
+ const { linkBarePaths } = await import("../lib/agentProse.ts");
+ assert.equal(linkBarePaths("[[1](//offerings/of-001?tab=materials&material=m-qjuhtpe)]"), "[[1](/offerings/of-001?tab=materials&material=m-qjuhtpe)]");
+ assert.equal(linkBarePaths("[Source](//example.com/news)"), "[Source](//example.com/news)");
+});

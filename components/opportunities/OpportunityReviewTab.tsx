@@ -3,7 +3,7 @@ import { DateField } from "@/components/ui/DateField";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Ban, Briefcase, CalendarDays, Check, CircleHelp, ClipboardCheck, Crown, Cpu, Flag, Gavel, Handshake, Lightbulb, ListChecks, Megaphone, Minus, Pencil, Plus, Shapes, ShieldCheck, Target, ThumbsUp, Trash2, UserRound, Users, UsersRound, Wallet } from "lucide-react";
+import { AlertTriangle, Ban, Briefcase, CalendarDays, Check, CircleHelp, ClipboardCheck, Crown, Cpu, Flag, Gavel, Handshake, Lightbulb, ListChecks, Megaphone, Minus, Pencil, Plus, Search, Shapes, ShieldCheck, Target, ThumbsUp, Trash2, UserRound, Users, UsersRound, Wallet } from "lucide-react";
 import { FormRoom } from "@/components/ui/FormRoom";
 import { Field as UiField, Input } from "@/components/ui/Input";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
@@ -195,14 +195,14 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
     closeParty();
   }
   const [competitorOpen, setCompetitorOpen] = useState(false);
-  const [competitorDraft, setCompetitorDraft] = useState<{ name: string; id?: string }>({ name: "" });
-  const openNewCompetitor = () => { setCompetitorDraft({ name: "" }); setCompetitorOpen(true); };
-  function saveCompetitor() {
-    const name = competitorDraft.name.trim();
+  const [competitorQuery, setCompetitorQuery] = useState("");
+  const openNewCompetitor = () => { setCompetitorQuery(""); setCompetitorOpen(true); };
+  function saveCompetitor(nameToAdd: string, id?: string) {
+    const name = nameToAdd.trim();
     if (!name) return;
     if (draft.competitors.some((value) => value.trim().toLowerCase() === name.toLowerCase())) { setCompetitorOpen(false); return; }
     const nextIds = { ...draft.competitorIds };
-    if (competitorDraft.id && !competitorDraft.id.startsWith("legacy:")) nextIds[name] = competitorDraft.id;
+    if (id && !id.startsWith("legacy:")) nextIds[name] = id;
     update({ competitors: [...draft.competitors.filter((value) => value.trim()), name], competitorIds: nextIds });
     setCompetitorOpen(false);
   }
@@ -231,6 +231,15 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
   const contactChoices: MultiPickerOption[] = (options?.contacts ?? []).map((contact) => ({ id: contact.id, label: contact.name, sub: contact.title, avatarName: contact.name, href: `/contacts/${contact.id}` }));
   const companyChoices: MultiPickerOption[] = (options?.companies ?? []).map((company) => ({ id: company.id, label: company.name, logoName: company.name, href: `/customers/${company.id}` }));
   const competitorChoices: MultiPickerOption[] = (options?.competitors ?? []).map((competitor) => ({ id: competitor.id, label: competitor.name, logoName: competitor.name, logoSrc: competitor.logoUrl ?? null, href: `/market-intel/${competitor.id}` }));
+  const availableCompetitors = competitorChoices.filter((competitor) =>
+    !draft.competitors.some((name) => name.trim().toLowerCase() === competitor.label.trim().toLowerCase())
+  );
+  const matchingCompetitors = availableCompetitors.filter((competitor) =>
+    competitor.label.toLowerCase().includes(competitorQuery.trim().toLowerCase())
+  );
+  const exactCompetitor = availableCompetitors.find((competitor) =>
+    competitor.label.trim().toLowerCase() === competitorQuery.trim().toLowerCase()
+  );
   const competitorLogo = (name: string) => options?.competitors.find((competitor) => competitor.name.trim().toLowerCase() === name.trim().toLowerCase())?.logoUrl ?? null;
   const teammateChoices: MultiPickerOption[] = (options?.teammates ?? []).map((teammate) => ({ id: teammate.id, label: teammate.name, avatarName: teammate.name }));
   const cancel = () => { setDraft(structuredClone(review ?? blankReview())); setError(""); onCancel?.(); };
@@ -490,17 +499,48 @@ export function OpportunityReviewTab({ review, mayEdit, onSave, dealId, editPage
       </div>
     </Modal>}
 
-    {competitorOpen && <Modal open onClose={() => setCompetitorOpen(false)} title="Add a confirmed competitor" size="workflow" tall>
-      <div className="space-y-4">
-        <UiField label="Competitor" required hint="Only competitors the customer or another reliable source has confirmed. Never assume.">
-          <RecordPicker choices={competitorChoices} name={competitorDraft.name} id={competitorDraft.id} company placeholder="Search tracked competitors" emptyLabel="No tracked competitor by that name. Type one to add it."
-            onPick={(choice) => setCompetitorDraft({ name: choice.label, id: choice.id })}
-            onCreate={(name) => setCompetitorDraft({ name })} />
-        </UiField>
-        <div className="flex items-center justify-end gap-2 border-t border-border-light pt-3">
-          <button type="button" onClick={() => setCompetitorOpen(false)} className="cursor-pointer rounded-lg border border-border-light px-3.5 py-2 text-[13px] font-semibold text-text-secondary transition-colors hover:bg-surface">Cancel</button>
-          <button type="button" onClick={saveCompetitor} disabled={!competitorDraft.name.trim()} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-primary px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"><Check size={14} />Add competitor</button>
+    {competitorOpen && <Modal open onClose={() => setCompetitorOpen(false)} title="Add a confirmed competitor">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-lg border border-border-light bg-surface px-3 focus-within:border-blue-primary focus-within:shadow-input-focus">
+          <Search size={16} className="shrink-0 text-text-tertiary" aria-hidden="true" />
+          <input
+            autoFocus
+            value={competitorQuery}
+            onChange={(event) => setCompetitorQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || !competitorQuery.trim()) return;
+              event.preventDefault();
+              const choice = exactCompetitor ?? matchingCompetitors[0];
+              saveCompetitor(choice?.label ?? competitorQuery, choice?.id);
+            }}
+            placeholder="Search competitors…"
+            aria-label="Search competitors"
+            className="min-h-[42px] min-w-0 flex-1 bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary"
+          />
         </div>
+        <div className="max-h-[min(360px,50vh)] space-y-0.5 overflow-y-auto" role="group" aria-label="Tracked competitors">
+          {matchingCompetitors.map((competitor) => (
+            <button key={competitor.id} type="button" onClick={() => saveCompetitor(competitor.label, competitor.id)}
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] text-text-primary transition-colors hover:bg-blue-light focus-visible:bg-blue-light focus-visible:outline-none">
+              <CompanyLogo name={competitor.label} src={competitor.logoSrc} className="h-6 w-6 shrink-0 text-[8px]" />
+              <span className="min-w-0 flex-1 truncate">{competitor.label}</span>
+              <Plus size={15} className="shrink-0 text-blue-primary" aria-hidden="true" />
+            </button>
+          ))}
+          {competitorQuery.trim().length > 1 && !exactCompetitor && (
+            <button type="button" onClick={() => saveCompetitor(competitorQuery)}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-blue-primary transition-colors hover:bg-blue-light focus-visible:bg-blue-light focus-visible:outline-none">
+              <Plus size={15} aria-hidden="true" /> Add “{competitorQuery.trim()}”
+            </button>
+          )}
+          {matchingCompetitors.length === 0 && !competitorQuery.trim() && (
+            <p className="px-2.5 py-3 text-[12px] text-text-tertiary">All tracked competitors have been added.</p>
+          )}
+          {matchingCompetitors.length === 0 && competitorQuery.trim().length === 1 && (
+            <p className="px-2.5 py-3 text-[12px] text-text-tertiary">Keep typing to add a new competitor.</p>
+          )}
+        </div>
+        <p className="text-[11.5px] text-text-tertiary">Only add competitors confirmed by the customer or another reliable source.</p>
       </div>
     </Modal>}
 

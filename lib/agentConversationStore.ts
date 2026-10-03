@@ -1,3 +1,4 @@
+import type { Entity } from "@/components/agent/EntityPills";
 import "server-only";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { DEFAULT_LOCAL_USER_IDENTITY } from "@/lib/userIdentity";
@@ -26,6 +27,7 @@ export type StoredMessage = {
   attachments?: { fileId: string; name: string; kind?: string; bytes?: number }[];
   suggestions?: string[];
   entityContext?: string[];
+  selectedEntities?: Entity[];
   /** A change the agent proposed under this message, and what became of it. */
   pendingAction?: {
     id: string;
@@ -97,6 +99,11 @@ export function sanitizeConversation(value: unknown): StoredConversation | null 
         : {}),
       ...(Array.isArray(message.entityContext)
         ? { entityContext: message.entityContext.filter((v): v is string => typeof v === "string" && v.startsWith("/")).slice(0, 12).map((v) => v.slice(0, 200)) }
+        : {}),
+      ...(message.role === "user" && Array.isArray(message.selectedEntities)
+        ? { selectedEntities: message.selectedEntities
+          .filter((record): record is Entity => !!record && typeof record === "object" && typeof record.kind === "string" && typeof record.id === "string" && typeof record.name === "string")
+          .slice(0, 12).map(record => ({kind: record.kind, id: record.id.slice(0, 300), name: record.name.slice(0, 250), ...(record.subtitle ? {subtitle: record.subtitle.slice(0,250)} : {})})) }
         : {}),
       ...(message.role === "user" && message.via === "whatsapp" ? { via: "whatsapp" as const } : {}),
       // Files sent with the message, so the chip is still there after a reload (Sep 30).

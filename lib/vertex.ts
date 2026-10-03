@@ -6,6 +6,7 @@ import {
   type GenerateContentConfig,
 } from "@google/genai";
 import type { AgentToolDef } from "./claude";
+import { completeQaVertexRequest, guardedQaVertexRequest } from "./agentQaBudget";
 
 const DEFAULT_LOCATION = "global";
 const DEFAULT_MODEL = "gemini-3.5-flash";
@@ -111,7 +112,7 @@ function addUsage(
 ) {
   const usage = response.usageMetadata;
   total.inputTokens += usage?.promptTokenCount || 0;
-  total.outputTokens += usage?.candidatesTokenCount || 0;
+  total.outputTokens += (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
   total.cacheReadTokens += usage?.cachedContentTokenCount || 0;
   total.modelCalls += 1;
 }
@@ -268,7 +269,7 @@ export async function vertexConverseAgentic(
     /* One step of the conversation, streamed to the listener when there is
        one, reassembled into the same shape either way. */
     const step = async (withTools: boolean): Promise<StepResult> => {
-      const request = { model: config.model, contents, config: callConfig(withTools) };
+      const request = await guardedQaVertexRequest({ model: config.model, contents, config: callConfig(withTools) });
       const sizes = { system: system.length, tools: toolChars, turns: contents.length };
       // Development only, and only while /tmp/freyr-capture-agent exists:
       // keep the exact request so another model can be tried on identical
@@ -286,6 +287,7 @@ export async function vertexConverseAgentic(
       }
       if (!onText) {
         const response = await vertex.models.generateContent(request);
+        completeQaVertexRequest(request, response.usageMetadata);
         addUsage(usage, response);
         logDevUsage(response, sizes);
         return {
@@ -331,7 +333,10 @@ export async function vertexConverseAgentic(
         }
       }
       if (!headDone && head) emit(head.replace(LEADING_THOUGHT_LABEL, ""));
-      if (last) addUsage(usage, last);
+      if (last) {
+        completeQaVertexRequest(request, last.usageMetadata);
+        addUsage(usage, last);
+      }
       logDevUsage(last, sizes);
       return {
         text: text.trim(),
@@ -417,11 +422,13 @@ export async function verifyVertexConnection(): Promise<{
 }> {
   const { client: vertex, config } = getClient();
   try {
-    const response = await vertex.models.generateContent({
+    const request = await guardedQaVertexRequest({
       model: config.model,
       contents: "Reply with exactly: vertex-ready",
       config: { maxOutputTokens: 128, temperature: 0 },
     });
+    const response = await vertex.models.generateContent(request);
+    completeQaVertexRequest(request, response.usageMetadata);
     const text = response.text?.trim() || "";
     if (text.toLowerCase() !== "vertex-ready") {
       throw new Error(`Unexpected verification response: ${text || "empty"}`);
@@ -447,7 +454,7 @@ export async function vertexReadParts(
   options: { maxOutputTokens?: number; timeoutMs?: number } = {},
 ): Promise<{ text: string; inputTokens: number; outputTokens: number; finishReason?: string }> {
   const { client, config } = getClient();
-  const response = await client.models.generateContent({
+  const request = await guardedQaVertexRequest({
     model: config.model,
     contents: [{ role: "user", parts }],
     config: {
@@ -457,10 +464,13 @@ export async function vertexReadParts(
       httpOptions: { timeout: options.timeoutMs ?? 180_000 },
     },
   });
+  const response = await client.models.generateContent(request);
+  completeQaVertexRequest(request, response.usageMetadata);
+  logDevUsage(response, { system: 0, tools: 0, turns: 1 });
   return {
     text: visibleResponseText(response),
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    outputTokens: (response.usageMetadata?.candidatesTokenCount ?? 0) + (response.usageMetadata?.thoughtsTokenCount ?? 0),
     finishReason: response.candidates?.[0]?.finishReason,
   };
 }

@@ -24,7 +24,7 @@ import { useStoredView } from "@/lib/useStoredView";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
-import { SearchX, Download, ArrowRight, ChevronLeft, ChevronRight, CheckSquare, Square, X, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutGrid, LayoutList, Table2, Layers, UserRound, History } from "lucide-react";
+import { SearchX, ArrowRight, ChevronRight, CheckSquare, Square, Sparkles, ArrowDownAZ, CalendarClock, Target, HeartPulse, Rows3, Plus, Upload, Building2, Users, LayoutGrid, LayoutList, Table2, Layers, UserRound, History } from "lucide-react";
 import { CustomerCard } from "./CustomerCard";
 import { ColorSelect, type ColorOption } from "@/components/ui/ColorSelect";
 import {
@@ -41,10 +41,8 @@ import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { CompanyFan } from "@/components/ui/CompanyFan";
 import { useToast } from "@/components/ui/Toast";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
-import { cn, formatDateTime, SIZE_TIER_LABEL, OUTCOME_META } from "@/lib/utils";
-import { toCSV, downloadCSV } from "@/lib/csv";
+import { cn, SIZE_TIER_LABEL } from "@/lib/utils";
 import { repOptionsFor } from "@/lib/pipeline";
-import { userScopedStorageKey } from "@/lib/userIdentity";
 import { HEALTH_COLOR, type AccountHealth } from "@/lib/health";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { PeopleSelect } from "@/components/ui/PeopleSelect";
@@ -231,10 +229,6 @@ export function CustomersBrowser({
    * is one answer to "may this person make a customer" instead of two. */
   const canAddCustomers = canCreate;
   const ownerOptions = repOptionsFor(currentUser.name, includeDemoTeam);
-  const perPageStorageKey = userScopedStorageKey(
-    "freyr.customers.perPage",
-    currentUser.id
-  );
   const [query, setQuery] = useState("");
   const [groupFilters, setGroupFilters] = useState<string[]>([]);
   const [ownerFilters, setOwnerFilters] = useState<string[]>([]);
@@ -321,34 +315,7 @@ export function CustomersBrowser({
     "table",
     ["grid", "table"]
   );
-  const [page, setPage] = useState(1);
   const [loadedListUserId, setLoadedListUserId] = useState<string | null>(null);
-  // ONE PAGE BY DEFAULT (Anir, Aug 18: "there is no point in doing multiple
-  // pages here… it's literally like two extra rows"). The per-page chooser
-  // Suren asked for stays for anyone who wants shorter pages, with "All" as
-  // the default; the pager only appears once a choice makes it needed.
-  const [perPage, setPerPage] = useState(Number.POSITIVE_INFINITY);
-  useEffect(() => {
-    setPerPage(Number.POSITIVE_INFINITY);
-    setPage(1);
-    const urlValue = Number(
-      new URLSearchParams(window.location.search).get("per_page")
-    );
-    const storedValue = Number(localStorage.getItem(perPageStorageKey));
-    const v = [8, 12, 24, 48].includes(urlValue) ? urlValue : storedValue;
-    if (v && [8, 12, 24, 48].includes(v)) setPerPage(v);
-  }, [perPageStorageKey]);
-  function changePerPage(v: string) {
-    const n = v === "all" ? Number.POSITIVE_INFINITY : Number(v);
-    setPerPage(n);
-    setPage(1);
-    try {
-      if (v === "all") localStorage.removeItem(perPageStorageKey);
-      else localStorage.setItem(perPageStorageKey, String(n));
-    } catch {}
-  }
-  const PER_PAGE = perPage;
-
   // Adding accounts — both doors go through the SAME approved importer
   // (/api/import/crm): the CSV picker sends the file as-is, "Add customer"
   // sends a one-row CSV. One pipeline, one dedupe/skip behaviour.
@@ -383,6 +350,7 @@ export function CustomersBrowser({
   // bulk actions (V4 #7)
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
   const [bulkOwner, setBulkOwner] = useState(currentUser.name);
   const [assigning, setAssigning] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -421,7 +389,6 @@ export function CustomersBrowser({
       nextGroup === "owner" || nextGroup === "group" ? nextGroup : "none"
     );
     if (nextView === "table" || nextView === "grid") setView(nextView);
-    setPage(1);
     setSelectMode(false);
     setSelected(new Set());
     setBulkOwner(currentUser.name);
@@ -442,12 +409,11 @@ export function CustomersBrowser({
     setOrDelete("view", view, "grid");
     setOrDelete("group", groupBy, "none");
     url.searchParams.delete("page");
-    setOrDelete("per_page", Number.isFinite(perPage) ? String(perPage) : "all", "all");
+    url.searchParams.delete("per_page");
     replaceAppBrowserUrl(url);
   }, [
     currentUser.id,
     loadedListUserId,
-    perPage,
     query,
     sort,
     view,
@@ -623,18 +589,7 @@ export function CustomersBrowser({
     return { scoped, live, emptyCustomerLabels };
   }, [filtered, deals]);
 
-  // reset to first page whenever the result set changes
-  useEffect(() => {
-    setPage(1);
-  }, [query, sort, groupFilters, ownerFilters, industryFilters, dealFilters]);
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const current = Math.min(page, pageCount);
-  // "All on one page" is Infinity, and (page - 1) * Infinity is NaN — which
-  // sliced the list to NOTHING and printed "NaN-NaN of 16" (Anir's morning
-  // find, Aug 19; my overnight sweeps only checked the page answered 200).
-  const start = Number.isFinite(PER_PAGE) ? (current - 1) * PER_PAGE : 0;
-  const paged = filtered.slice(start, start + PER_PAGE);
+  const paged = filtered;
   const selectedInScope = useMemo(
     () => paged.filter((customer) => selected.has(customer.id)),
     [paged, selected]
@@ -651,46 +606,9 @@ export function CustomersBrowser({
       return next.size === previous.size ? previous : next;
     });
   }, [visibleIdsKey]);
-  const rangeStart = filtered.length === 0 ? 0 : start + 1;
-  const rangeEnd = Number.isFinite(PER_PAGE)
-    ? Math.min(start + PER_PAGE, filtered.length)
-    : filtered.length;
+  const rangeStart = filtered.length === 0 ? 0 : 1;
+  const rangeEnd = filtered.length;
 
-  function rowsToCsv(list: EnrichedCustomer[]) {
-    return toCSV(
-      [
-        "Company",
-        "Size",
-        "Industry",
-        "Geography",
-        "Health",
-        "Contacts",
-        "Last Outcome",
-        "Last Session",
-      ],
-      list.map((c) => [
-        c.company_name,
-        c.size_tier ? SIZE_TIER_LABEL[c.size_tier] || c.size_tier : "",
-        c.industry || "",
-        c.geography || "",
-        // Health leads the list (a badge on every card, sortable + filterable),
-        // so it belongs in the Excel export too.
-        c.health ? `${c.health.label} (${c.health.score}/100)` : "",
-        c.contact_count,
-        c.last_outcome ? OUTCOME_META[c.last_outcome]?.label || c.last_outcome : "",
-        c.last_session_date ? formatDateTime(c.last_session_date) : "",
-      ])
-    );
-  }
-  function exportCsv() {
-    downloadCSV("freyr-customers.csv", rowsToCsv(filtered));
-  }
-  function exportSelected() {
-    const list = selectedInScope;
-    if (!list.length) return;
-    downloadCSV("freyr-customers-selected.csv", rowsToCsv(list));
-    toast(`Exported ${list.length} account${list.length === 1 ? "" : "s"}`);
-  }
   async function assignOwner() {
     const ids = selectedInScope.map((customer) => customer.id);
     if (!ids.length) return;
@@ -781,14 +699,7 @@ export function CustomersBrowser({
       return (
       <tr
         key={c.id}
-        /* THE ROW IS THE DOOR (Anir, Sep 6: "why do I gotta hit the arrow in
-           order to do it"). Clicking anywhere opens the account; the name
-           link and the arrow keep working as links, and in select mode a
-           click ticks the box instead, because that is what the mode is
-           for. */
-        onClick={() =>
-          selectMode ? toggleSel(c.id) : router.push(`/customers/${c.id}`)
-        }
+        onClick={() => selectMode ? toggleSel(c.id) : router.push(`/customers/${c.id}`)}
         className={cn(
           "cursor-pointer transition-colors group",
           isSel ? "bg-blue-light" : "hover:bg-surface"
@@ -797,8 +708,11 @@ export function CustomersBrowser({
         {selectMode && (
           <td className="pl-5 py-4">
             <button
-              onClick={() => toggleSel(c.id)}
-              aria-label={`Select ${c.company_name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleSel(c.id);
+              }}
+              aria-label={`${isSel ? "Unselect" : "Select"} ${c.company_name}`}
               aria-pressed={isSel}
               className="text-blue-primary align-middle"
             >
@@ -881,15 +795,15 @@ export function CustomersBrowser({
               </div>
             }
           >
-            <Link href={`/customers/${c.id}`} className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               <CompanyLogo name={c.company_name} className="w-8 h-8 text-[11px]" />
-              <span className="text-[13px] font-semibold text-text-primary">{c.company_name}</span>
+              <Link href={`/customers/${c.id}`} onClick={(event) => event.stopPropagation()} className="text-[13px] font-semibold text-text-primary hover:text-blue-primary hover:underline">{c.company_name}</Link>
               {profiles[c.id]?.customerNo && (
                 <span className="rounded-md bg-surface px-1.5 py-0.5 text-[10.5px] font-semibold tnum text-text-tertiary">
                   {profiles[c.id].customerNo}
                 </span>
               )}
-            </Link>
+            </div>
           </HoverCard>
         </td>
         {/* OWNER (Manoj, Sep 3). It was buried in the hover card;
@@ -911,9 +825,11 @@ export function CustomersBrowser({
         </td>
         )}
         <td className="px-5 py-4">
-          <Link href={`/customers/${c.id}`} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">
-            <ArrowRight size={16} strokeWidth={1.5} />
-          </Link>
+          {!selectMode && (
+            <Link href={`/customers/${c.id}`} onClick={(event) => event.stopPropagation()} className="inline-flex text-text-tertiary group-hover:text-blue-primary transition-colors" aria-label="Open customer">
+              <ArrowRight size={16} strokeWidth={1.5} />
+            </Link>
+          )}
         </td>
       </tr>
       );
@@ -1180,93 +1096,6 @@ export function CustomersBrowser({
                 ] satisfies ColorOption[]}
               />
             )}
-            {shape === "list" && (
-            <>
-            {/* PAGE SIZE IS A DISPLAY CONTROL, so it belongs in the display
-                cluster rather than in the filter run, where it had grown a
-                line of its own (Anir, Aug 21: "your customers page is weird,
-                there's literally a dropdown on its own line there"). */}
-            <ColorSelect
-              value={Number.isFinite(perPage) ? String(perPage) : "all"}
-              onChange={changePerPage}
-              ariaLabel="Rows per page"
-              /* NO HARD WIDTH (Anir, Aug 24: "why is the 'all on one page' not
-                 even showing up? You can't do that"). A fixed 120px box cut
-                 "All on one page" to "All on o…", so the one option whose name
-                 explains what it does was the one you could not read. The
-                 select sizes to whatever it is currently showing now; 120 stays
-                 as the floor so the short "8 / page" labels do not shrink the
-                 control every time you page. */
-              minWidth={120}
-              dense
-              collapsible={false}
-              className="shrink-0"
-              options={[
-                {
-                  value: "all",
-                  label: "All rows",
-                  icon: Rows3,
-                  short: "All",
-                  color: "var(--ink-bright-blue)",
-                },
-                ...[8, 12, 24, 48].map<ColorOption>((n) => ({
-                  value: String(n),
-                  label: `${n} / page`,
-                  icon: Rows3,
-                  // Rows3 alone would collapse every page size to one identical
-                  // glyph, so the compressed square shows the number itself.
-                  short: String(n),
-                  color: "var(--ink-bright-blue)",
-                })),
-              ]}
-            />
-            </>
-            )}
-            {/* ICONS ONLY, VIEW TOGGLE LAST (Anir, Aug 10: "the tile dropdown
-                thing should be last. The download button and the select
-                button: you don't have to see what they are. Just have the
-                icons, to the left of that"). */}
-            {/* SELECTING IS A LIST THING (Anir, Sep 4: "what the fuck does
-                this button do? This checkmark button? Is it useless?").
-
-                It turns on the row checkboxes so accounts can be bulk-assigned,
-                analysed or exported — real work, but only in the list, which is
-                the only view with rows to tick. Offered in Summary it did
-                nothing visible at all, which is exactly what made it look
-                useless. */}
-            {shape === "list" && (
-            <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
-              <button
-                onClick={() => {
-                  // Selecting works in BOTH layouts now — flipping people into
-                  // the table was a surprise every time (Anir, Aug 12: "I should
-                  // be able to check it off like on normal view too").
-                  const next = !selectMode;
-                  setSelectMode(next);
-                  setSelected(new Set());
-                }}
-                aria-label={selectMode ? "Done selecting" : "Select accounts"}
-                aria-pressed={selectMode}
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
-                  selectMode
-                    ? "border-blue-primary bg-blue-light text-blue-primary"
-                    : "border-border text-text-secondary hover:bg-surface"
-                )}
-              >
-                <CheckSquare size={15} strokeWidth={1.8} />
-              </button>
-            </PriorityTooltip>
-            )}
-            <PriorityTooltip label="Export CSV">
-              <button
-                onClick={exportCsv}
-                aria-label="Export CSV"
-                className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-text-secondary transition-colors hover:bg-surface"
-              >
-                <Download size={16} strokeWidth={1.5} />
-              </button>
-            </PriorityTooltip>
           </>
         }
         view={
@@ -1287,9 +1116,8 @@ export function CustomersBrowser({
               value={shape}
               onChange={(next) => setShape(next === "list" ? "list" : "summary")}
               ariaLabel="How to show the customers"
-              minWidth={117}
               dense
-              collapsible={false}
+              iconOnly
               className="shrink-0"
               options={[
                 { value: "summary", label: "Summary", icon: Table2, color: "var(--ink-indigo)" },
@@ -1310,6 +1138,31 @@ export function CustomersBrowser({
                   { value: "table", label: "Rows", icon: Rows3, color: "var(--ink-blue-soft)" },
                 ] satisfies ColorOption[]}
               />
+            )}
+            {shape === "list" && (
+            <PriorityTooltip label={selectMode ? "Done selecting" : "Select accounts"}>
+              <button
+                onClick={() => {
+                  // Selecting works in BOTH layouts now — flipping people into
+                  // the table was a surprise every time (Anir, Aug 12: "I should
+                  // be able to check it off like on normal view too").
+                  const next = !selectMode;
+                  setSelectMode(next);
+                  setOwnerPickerOpen(false);
+                  setSelected(new Set());
+                }}
+                aria-label={selectMode ? "Done selecting" : "Select accounts"}
+                aria-pressed={selectMode}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
+                  selectMode
+                    ? "border-blue-primary bg-blue-light text-blue-primary"
+                    : "border-border text-text-secondary hover:bg-surface"
+                )}
+              >
+                <CheckSquare size={15} strokeWidth={1.8} />
+              </button>
+            </PriorityTooltip>
             )}
           </span>
         }
@@ -1393,55 +1246,54 @@ export function CustomersBrowser({
           </Card>
         </div>
       )}
-      {/* Bulk action bar */}
-      {selectMode && selectedInScope.length > 0 && (
-        <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-lg border border-blue-primary bg-blue-light flex-wrap">
-          <span className="text-[13px] font-semibold text-blue-primary tnum">
-            {selectedInScope.length} selected
-          </span>
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <button
-              onClick={() => setConfirmBulk("analyze")}
-              disabled={analyzing}
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-md bg-blue-primary text-white hover:bg-blue-hover transition-colors disabled:opacity-50"
-            >
-              <Sparkles size={15} strokeWidth={1.8} />
-              {analyzing ? "Analyzing…" : "Run analysis"}
-            </button>
-            <span className="w-px h-5 bg-border-light" />
-            <span className="text-[12px] text-text-secondary">Assign owner</span>
-            {/* The one native <select> left on this page — every rep picker in
-                the app is a PeopleSelect with headshots (Anir, Jul 30: "make
-                sure all the dropdowns are good… some don't have the colors"). */}
-            <PeopleSelect
-              ariaLabel="Bulk assign owner"
-              value={bulkOwner}
-              options={ownerOptions}
-              onChange={setBulkOwner}
-              allowUnassigned={false}
-            />
-            <button
-              onClick={() => setConfirmBulk("assign")}
-              disabled={assigning}
-              className="text-[13px] font-semibold px-3 py-1.5 rounded-md bg-white border border-border text-text-secondary hover:bg-surface transition-colors disabled:opacity-50"
-            >
-              {assigning ? "Assigning…" : "Assign"}
-            </button>
-            <button
-              onClick={exportSelected}
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-md border border-border text-text-secondary hover:bg-white transition-colors"
-            >
-              <Download size={15} strokeWidth={1.7} />
-              Export
-            </button>
-            <button
-              onClick={() => setSelected(new Set())}
-              aria-label="Clear selection"
-              className="text-text-tertiary hover:text-text-primary"
-            >
-              <X size={16} strokeWidth={1.8} />
-            </button>
+      {selectMode && (
+        <div role="region" aria-label="Selected account actions" className="relative z-20 mb-5 rounded-xl border border-border bg-white px-5 py-4 shadow-[0_8px_24px_-10px_rgba(15,23,42,0.22)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[13px] font-semibold text-text-primary tnum">
+              {selectedInScope.length} account{selectedInScope.length === 1 ? "" : "s"} selected
+            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" disabled={selectedInScope.length === 0} onClick={() => setOwnerPickerOpen(!ownerPickerOpen)}
+                aria-expanded={ownerPickerOpen}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed">
+                <UserRound size={15} /> Change owner
+              </button>
+              <button type="button" disabled={analyzing || selectedInScope.length === 0} onClick={() => {
+                setOwnerPickerOpen(false);
+                setConfirmBulk("analyze");
+              }} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-[12.5px] font-semibold text-text-primary transition-colors hover:bg-surface disabled:opacity-50">
+                <Sparkles size={15} className="text-violet-600" />
+                {analyzing ? "Researching…" : "Research company details"}
+              </button>
+              <button type="button" onClick={() => {
+                setSelected(new Set());
+                setSelectMode(false);
+                setOwnerPickerOpen(false);
+              }} className="text-[12.5px] font-medium text-text-secondary hover:text-text-primary">
+                Cancel selection
+              </button>
+            </div>
           </div>
+          {ownerPickerOpen && selectedInScope.length > 0 && (
+            <div className="mt-3 border-t border-border-light pt-3">
+              <p className="mb-2 text-[12.5px] text-text-secondary">Choose the teammate responsible for these accounts.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <PeopleSelect
+                  ariaLabel="Account owner"
+                  value={bulkOwner}
+                  options={ownerOptions}
+                  onChange={setBulkOwner}
+                  allowUnassigned={false}
+                  className="w-[360px] max-w-full shrink-0"
+                />
+                <button type="button" onClick={() => setConfirmBulk("assign")} disabled={assigning || selectedInScope.length === 0}
+                  className="rounded-lg bg-blue-primary px-3 py-2 text-[12.5px] font-semibold text-white hover:bg-blue-hover disabled:opacity-50">
+                  {assigning ? "Saving…" : "Change owner"}
+                </button>
+                <button type="button" onClick={() => setOwnerPickerOpen(false)} className="px-2 py-2 text-[12.5px] text-text-secondary">Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1795,33 +1647,6 @@ filtered.length === 0 ? (
           </PinnableTable>
         </div>
       )
-      )}
-
-      {/* No pager while grouped: the groups ARE the whole list. */}
-      {!grouping && filtered.length > PER_PAGE && (
-        <div className="flex items-center justify-between mt-6">
-          <span className="text-[13px] text-text-secondary tnum">
-            Page {current} of {pageCount}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={current <= 1}
-              className="inline-flex items-center gap-1 text-[13px] font-medium px-3 py-1.5 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft size={15} strokeWidth={1.8} />
-              Prev
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-              disabled={current >= pageCount}
-              className="inline-flex items-center gap-1 text-[13px] font-medium px-3 py-1.5 rounded-md border border-border text-text-secondary hover:bg-surface transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
-              <ChevronRight size={15} strokeWidth={1.8} />
-            </button>
-          </div>
-        </div>
       )}
 
       {/* ADD A CUSTOMER WITH MANOJ'S FIELDS (Sep 10). Import CSV keeps its own

@@ -8,7 +8,7 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { getCurrentUser } from "@/lib/currentUser";
-import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal, moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,8 @@ const COMPONENT_TYPES: FdlComponentType[] = ["Module", "Agent", "Platform"];
 
 /** FDL components: the software pieces offerings are packages of. */
 export async function GET() {
+  const refusal = await moduleReadRefusal("/components");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   await initializeLiveOfferings().catch(() => undefined);
   return NextResponse.json({ components: listFdlComponents() });
 }

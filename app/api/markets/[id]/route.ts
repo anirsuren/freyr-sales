@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { deleteMarket, updateMarket, commitOfferingsChange } from "@/lib/offerings";
 import { canManageOfferings, isAdmin } from "@/lib/role";
+import { moduleDeleteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleDeleteRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only: admin access required" },

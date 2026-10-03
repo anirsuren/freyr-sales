@@ -26,6 +26,7 @@ import {
   type WhatsAppConfig,
 } from "@/lib/whatsapp";
 import { chartSpecsIn, renderChartPng } from "@/lib/whatsappChart";
+import { shouldContinueWhatsAppConversation } from "@/lib/whatsappThreading";
 import type { WorkspaceMemberScope } from "@/lib/types";
 
 /**
@@ -40,8 +41,6 @@ import type { WorkspaceMemberScope } from "@/lib/types";
  * conversation tagged "whatsapp", so it shows up on the Agent page.
  */
 
-/** A text within six hours continues the same thread; later starts a new one. */
-const CONTINUE_WITHIN_MS = 6 * 60 * 60_000;
 /** How long the bridge waits for the agent, and when it tells the person the answer is still coming. */
 const CONVERSE_TIMEOUT_MS = 240_000;
 const SLOW_NOTICE_MS = 60_000;
@@ -497,7 +496,7 @@ export async function handleInboundWhatsApp(message: InboundMessage, options: In
   console.log("[whatsapp] inbound", { from: `...${message.from.slice(-4)}`, member: user.display_name ?? member.scope.userId, chars: incomingText.length, voice: !!heard });
 
   const latest = await latestChannelConversation(member.scope, "whatsapp");
-  const continues = !!latest && Date.now() - latest.updated < CONTINUE_WITHIN_MS;
+  const continues = shouldContinueWhatsAppConversation(latest);
   const conversationId = continues && latest
     ? latest.id
     : `wa-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;

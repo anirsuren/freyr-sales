@@ -29,7 +29,6 @@ export function LeadPersonInsights({
     { label: "Job title", complete: Boolean(lead.title?.trim()) },
     { label: "What they need", complete: Boolean(lead.interest?.trim()) },
     { label: "Owner", complete: Boolean(lead.owner?.trim()) },
-    { label: "Country", complete: Boolean(lead.country?.trim()) },
   ];
   const missingChecks = checks.filter((check) => !check.complete);
   const age = leadAgeDays(lead);

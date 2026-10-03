@@ -5,6 +5,7 @@ import {
   commitOfferingsChange,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { moduleDeleteRefusal, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleWriteRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await canManageOfferings())) return FORBIDDEN;
   const body = (await req.json().catch(() => ({}))) ?? {};
   const data: { name?: string; description?: string } = {};
@@ -40,6 +43,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleDeleteRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await canManageOfferings())) return FORBIDDEN;
   const { id } = await params;
   try {

@@ -2,7 +2,7 @@
 
 import { MapPin } from "lucide-react";
 import { countryOptions } from "@/lib/countries";
-import { AddressLineLookup } from "./CustomerLookups";
+import { AddressLineLookup, CityLookup } from "./CustomerLookups";
 import {
   addressHasAny,
   addressIsComplete,
@@ -400,7 +400,7 @@ export function CustomerEditForm({
                   />
                   <AddressLineLookup title={title} value={value} country={value.country} onChange={setValue} inputClassName={INPUT} className="sm:col-span-3" />
                   <input className={cn(INPUT, "sm:col-span-3")} placeholder="Line 2" aria-label={`${title} line 2`} value={value.line2 ?? ""} onChange={(e) => setValue({ ...value, line2: e.target.value })} />
-                  <input className={INPUT} placeholder="City" aria-label={`${title} city`} value={value.city} onChange={(e) => setValue({ ...value, city: e.target.value })} />
+                  <CityLookup country={value.country} inputClassName={INPUT} ariaLabel={`${title} city`} value={value.city} onChange={(city) => setValue({ ...value, city })} onPick={(city, country) => setValue({ ...value, city, country })} />
                   <input className={INPUT} placeholder="State" aria-label={`${title} state`} value={value.state ?? ""} onChange={(e) => setValue({ ...value, state: e.target.value })} />
                   <input className={INPUT} placeholder="ZIP" aria-label={`${title} ZIP`} value={value.zip ?? ""} onChange={(e) => setValue({ ...value, zip: e.target.value })} />
                 </div>

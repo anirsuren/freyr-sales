@@ -72,6 +72,7 @@ import {
   useDonutSyncIs,
   type TipItem,
 } from "@/components/charts/Charts";
+import { GoalProgressModal } from "./GoalProgressModal";
 import { ExpandedChartModal } from "@/components/charts/ExpandedChartModal";
 import { InfoHint } from "@/components/ui/InfoHint";
 import { PerformanceExport } from "./PerformanceExport";
@@ -704,101 +705,6 @@ export function OrgPerformanceTab({
    * must not make the summary bars jump to new positions above it.
    */
   const chartGoals = shown;
-  const goalProgressBars = chartGoals.map((goal) => {
-    const actual = actualValue(state.actuals, goal, { rates: state.rates });
-    const verified = verifiedValue(state, goal);
-    const awaiting = Math.max(0, actual - verified);
-    const sentBack = Math.min(
-      awaiting,
-      familyValue(state, goal, { sentBackOnly: true })
-    );
-    const waiting = Math.max(0, awaiting - sentBack);
-    return {
-      id: goal.id,
-      label: chartName(goal.name),
-      value: goal.target > 0 ? Math.round(pctMet(actual, goal.target)) : 0,
-      valueLabel:
-        goal.target > 0
-          ? `${Math.min(100, Math.round(pctMet(verified, goal.target)))}% met`
-          : undefined,
-      pending:
-        goal.target > 0 && awaiting > 0
-          ? Math.round(pctMet(awaiting, goal.target))
-          : 0,
-      pendingBands:
-        goal.target > 0
-          ? [
-              ...(sentBack > 0
-                ? [
-                    {
-                      value: Math.round(pctMet(sentBack, goal.target)),
-                      color: GOAL_PROGRESS_COLOR.sent_back,
-                    },
-                  ]
-                : []),
-              ...(waiting > 0
-                ? [
-                    {
-                      value: Math.round(pctMet(waiting, goal.target)),
-                      color: GOAL_PROGRESS_COLOR.reported,
-                    },
-                  ]
-                : []),
-            ]
-          : [],
-      color: MONEY,
-      dotColor: typeMeta(goal.type).color,
-      labelIcon: typeLabelIcon(goal.type),
-      caption:
-        goal.target > 0
-          ? `${fmtAmount(goal.unit, actual, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`
-          : actual > 0
-            ? `${fmtAmount(goal.unit, actual, goal.currency)} logged, no target set`
-            : "no target yet",
-      tipBar: {
-        done: goal.target > 0 ? pctMet(verified, goal.target) : 0,
-        pending: goal.target > 0 ? pctMet(awaiting, goal.target) : 0,
-        color: MONEY,
-        pendingColor: GOAL_PROGRESS_COLOR.reported,
-        pendingBands: goal.target > 0 ? [
-          ...(sentBack > 0 ? [{ value: pctMet(sentBack, goal.target), color: GOAL_PROGRESS_COLOR.sent_back }] : []),
-          ...(waiting > 0 ? [{ value: pctMet(waiting, goal.target), color: GOAL_PROGRESS_COLOR.reported }] : []),
-        ] : [],
-        caption:
-          goal.target > 0
-            ? `${fmtAmount(goal.unit, actual, goal.currency)} of ${fmtAmount(goal.unit, goal.target, goal.currency)}`
-            : actual > 0
-              ? `${fmtAmount(goal.unit, actual, goal.currency)} logged, no target set`
-              : "no target yet",
-        bands: [
-          {
-            color: ENTRY_COLOR.verified,
-            label: "Verified, counts now",
-            value: fmtAmount(goal.unit, verified),
-          },
-          ...(sentBack > 0
-            ? [
-                {
-                  color: ENTRY_COLOR.sent_back,
-                  label: "Sent back, needs a fix",
-                  value: fmtAmount(goal.unit, sentBack),
-                },
-              ]
-            : []),
-          ...(waiting > 0
-            ? [
-                {
-                  color: ENTRY_COLOR.reported,
-                  label: "Claimed, not checked yet",
-                  value: fmtAmount(goal.unit, waiting),
-                },
-              ]
-            : []),
-        ],
-      },
-      tip: contributorTips(state, goal, actual),
-    };
-  });
   const paceSegments = ([
     "met",
     "ahead",
@@ -1071,16 +977,25 @@ export function OrgPerformanceTab({
                 {words?.barTitle ?? "How far along each goal is"}
                 <InfoHint text="Each bar is one tracked goal: how much of its annual target is achieved so far. Hover a bar to see the main contributors; open the goal below for every dated result." />
               </p>
-              <ExpandedChartModal
+              <GoalProgressModal
+                syncId={`${syncId}-popup`}
                 title={expandedBarTitle}
-                subtitle="Progress against the annual target for every goal currently shown."
-                triggerLabel="Expand goal progress"
-                chart={{
-                  kind: "bar",
-                  data: goalProgressBars,
-                  format: "percent",
-                  unit: "% met",
-                }}
+                renderRows={(popupOpenId, togglePopupGoal) => <table className="w-full min-w-[950px] table-fixed"><thead><tr>{["Goal", "Target", "Actual", "Met", "% met", "Verified", "Actions"].map((label, index) => <th key={label} className={cn("px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-text-tertiary", index >= 1 && index <= 3 && "w-[130px]", index === 4 && "w-[150px]", index === 5 && "w-[190px]", index === 6 && "w-[112px] !px-2")}>{label}</th>)}</tr></thead><tbody className="divide-y divide-border-light">{chartGoals.map((goal, index) => <GoalRows embedded key={goal.id} goal={goal} index={index} syncId={`${syncId}-popup`} rates={state.rates ?? {}} dimmed={false} state={state} allGoals={allGoals} meName={meName} actuals={state.actuals} open={popupOpenId === goal.id} onToggle={() => togglePopupGoal(goal.id)} live={live} canLog={canLog} run={run} period={period} periodLabel={periodLabel} onEditGoal={onEditGoal} onLogActual={onLogActual} onEditSubgoal={onEditSubgoal} onGoToMaster={onGoToMaster} onSetTarget={scope?.onSetTarget} typeNamedAbove={showTypeHeaders} />)}</tbody></table>}
+                rows={chartGoals.map(goal => {
+                  const actual = actualValue(state.actuals, goal, { rates: state.rates });
+                  const verified = verifiedValue(state, goal);
+                  return {
+                    id: goal.id, label: chartName(goal.name),
+                    actual: fmtAmount(goal.unit, actual, goal.currency),
+                    target: goal.target > 0 ? fmtAmount(goal.unit, goal.target, goal.currency) : null,
+                    progress: goal.target > 0 ? pctMet(actual, goal.target) : null,
+                    verifiedProgress: goal.target > 0 ? pctMet(verified, goal.target) : 0,
+                    verified: fmtAmount(goal.unit, verified, goal.currency),
+                    sentBackProgress: goal.target > 0 ? pctMet(familyValue(state, goal, { sentBackOnly: true }), goal.target) : 0,
+                    color: typeMeta(goal.type).color, icon: typeLabelIcon(goal.type),
+                    people: [...new Set((goal.assignments ?? []).map(assignment => assignment.person))],
+                  };
+                })}
               />
             </div>
             {/* -mb-5 as well as -mx-5: the card's bottom padding was holding the
@@ -1735,7 +1650,9 @@ function GoalRows({
   onSetTarget,
   typeNamedAbove,
   allGoals,
+  embedded = false,
 }: {
+  embedded?: boolean;
   goal: PrimaryGoal;
   /** The plan before this screen's scope filter — see GoalZoom's own prop. */
   allGoals?: PrimaryGoal[];
@@ -2015,14 +1932,15 @@ function GoalRows({
                   and navigated instead of opening the row (Anir, Aug 17: "it
                   should always do the drop-down unless I explicitly click on
                   the text"). Now the hitbox hugs the words. */}
-              <Link
+              {embedded ? <button type="button" onClick={event => { event.stopPropagation(); onToggle(); }} aria-expanded={open} className="self-start text-left text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary">{goal.name}</button> : (              <Link
                 href={`/performance/goal/${goal.id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="self-start text-[13.5px] font-semibold text-text-primary transition-colors hover:text-blue-primary"
                 title="Open this goal: financial years, quarters, months, weeks, groups and people"
               >
                 {goal.name}
-              </Link>
+              </Link>)}
+
               <span className="flex flex-wrap items-center gap-2">
                 {/* The grouped table names the family once, in the header
                     above these rows, so repeating it on every row underneath
@@ -2067,7 +1985,7 @@ function GoalRows({
             <span className="text-[13px] font-semibold text-text-primary tnum">
               {money(goal.target, goal.currency)}
             </span>
-          ) : live ? (
+          ) : live && canLog ? (
             <button
               type="button"
               onClick={(e) => {
@@ -2215,7 +2133,7 @@ function GoalRows({
               button?"). Editing a goal was only reachable from the Goal
               Master, so the row that shows a goal could not change it — and
               now that a goal carries a schedule, this is the way to it. */}
-          {live && (
+          {live && canLog && (
             <button
               type="button"
               onClick={(e) => {
@@ -2251,6 +2169,7 @@ function GoalRows({
               see that button. It should be like a button. It should be an
               action column on this row"). Buried in the drill-down header it
               was only reachable once you had already opened the row. */}
+          {!embedded && (
           <button
             type="button"
             onClick={(e) => {
@@ -2263,6 +2182,7 @@ function GoalRows({
           >
             <Maximize2 size={13.5} strokeWidth={2.2} />
           </button>
+          )}
           {/* Keep the destructive reset second-last, directly before the row
               chevron, so its position is stable on every goal row. */}
           {live && goal.verified && (
@@ -2855,7 +2775,7 @@ function GoalRows({
                                 : undefined
                             }
                           />
-                          {live && s.target === 0 && (
+                          {live && canLog && s.target === 0 && (
                             <button
                               type="button"
                               onClick={() => onEditSubgoal(goal, s)}

@@ -544,7 +544,7 @@ export function SolutioningModule({
         setConfirmPickUp({ id: request.id, label: `${request.ref} · ${request.title}` })
       }
       onDelete={
-        meRole === "admin" || request.status === "initiated"
+        meRole === "admin" || (canCreate && request.requestedBy === meName && request.status === "initiated")
           ? () => setConfirmDelete({ id: request.id, ref: request.ref })
           : undefined
       }
@@ -1039,7 +1039,7 @@ export function SolutioningModule({
                     >
                       <ArrowUpRight size={15} strokeWidth={2.2} />
                     </Link>
-                    {(meRole === "admin" || picked.status === "initiated") && (
+                    {(meRole === "admin" || (canCreate && picked.requestedBy === meName && picked.status === "initiated")) && (
                       <button
                         type="button"
                         title={`Delete ${picked.ref}`}

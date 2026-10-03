@@ -7,11 +7,13 @@ import {
   type CustomerSize,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal, moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   return NextResponse.json({ customerTypes: listCustomerTypes() });
 }
 
@@ -21,7 +23,7 @@ export async function POST(req: Request) {
      change it. Falls through to the old role rules while the privilege
      table is not being enforced. */
   {
-    const refusal = await moduleWriteRefusal("/customers");
+    const refusal = await moduleCreateRefusal("/customers");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 

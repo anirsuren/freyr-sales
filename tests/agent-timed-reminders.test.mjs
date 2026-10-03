@@ -56,3 +56,15 @@ test("a meeting still to come needs its time; one already held may be logged wit
   assert.ok(!past.error, past.error);
   assert.match(past.summary, /no time set/);
 });
+
+test("an explicit reminder timezone is converted to the account calendar, including DST", async () => {
+  const account = { ...ctx, timeZone: "UTC" };
+  const summer = await setReminder.prepare({ what: "QA notes", when: "2027-07-02 at 9am America/New_York" }, account);
+  assert.equal(summer.params.time, "13:00");
+  assert.equal(summer.params.day, "2027-07-02");
+  assert.match(summer.summary, /09:00 America\/New_York/);
+  const winter = await setReminder.prepare({ what: "QA notes", when: "2026-12-02", time: "9am", timeZone: "America/New_York" }, account);
+  assert.equal(winter.params.time, "14:00");
+  const invalid = await setReminder.prepare({ what: "QA notes", when: "tomorrow", time: "9am", timeZone: "Invalid/Zone" }, account);
+  assert.match(invalid.error, /timezone is not recognized/);
+});

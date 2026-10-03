@@ -1,4 +1,6 @@
 "use client";
+import { MentionedText } from "./MentionedText";
+import { EntityComposer } from "./EntityComposer";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
@@ -21,7 +23,7 @@ import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
 import { bucketByDay, clockTime, dayLabel, listStamp, sameDay } from "@/lib/chatTime";
 import { sentFromWhatsApp } from "@/lib/messageVia";
-import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
+import { useEntityIndexState, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
 import { AgentThinking } from "@/components/agent/AgentThinking";
 import { useTypewriter, trimStreamingLink } from "@/components/agent/useTypewriter";
@@ -71,7 +73,7 @@ function clampDockSize(w: number, h: number): { w: number; h: number } {
 const CONVERSATIONS_KEY = "freyr.agent.conversations";
 const LEGACY_THREAD_KEY = "freyr.assistant.thread.v2";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
+type Msg = { role: "user" | "agent"; text: string; ts: number; entityContext?: string[]; selectedEntities?: Entity[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
 type Convo = {
   id: string;
   title: string;
@@ -269,7 +271,7 @@ function TypedReply({
   active: boolean;
   entities: Entity[];
   linksOn: boolean;
-  entityContext?: string[];
+  entityContext?: string[]; selectedEntities?: Entity[];
 }) {
   const shown = useTypewriter(text, active);
   return <AgentResponseMarkdown text={trimStreamingLink(shown)} entities={entities} linkable={linksOn} entityContext={entityContext} />;
@@ -330,12 +332,13 @@ export function AgentDock({
   const [pendingOffering, setPendingOffering] =
     useState<AgentOfferingContext | null>(null);
   const [input, setInput] = useState("");
+  const [selectedEntities, setSelectedEntities] = useState<Entity[]>([]);
   const [busy, setBusy] = useState(false);
   const [streamingPreview, setStreamingPreview] = useState("");
   const [connectionErrorId, setConnectionErrorId] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   // Customers, contacts, offerings, FDL components, teammates and reports.
-  const entities = useEntityIndex();
+  const { entities, ready: entitiesReady } = useEntityIndexState(true);
   /* WHAT IS DUE, WITHOUT BEING ASKED (Anir, Sep 30: "if a deadline is coming or
      something tomorrow it should remind me"). Overdue, today and tomorrow put a
      count on the launcher, a one-line note beside it once a day, and open the
@@ -392,7 +395,7 @@ export function AgentDock({
   const scrollRef = useRef<HTMLDivElement>(null);
   const messageContentRef = useRef<HTMLDivElement>(null);
   const followBottomRef = useRef(true);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
   // Files for the agent, the same as on the Agent page (Sep 30).
   const attach = useAgentAttachments();
   const dockFileRef = useRef<HTMLInputElement>(null);
@@ -867,7 +870,7 @@ export function AgentDock({
               title: conversation.title || smartTitle(text) || "New chat",
               messages: [
                 ...conversation.messages,
-                { role: "user" as const, text, ts: userTs, ...(sentFiles.length ? { attachments: sentFiles } : {}) },
+                { role: "user" as const, text, selectedEntities, ts: userTs, ...(sentFiles.length ? { attachments: sentFiles } : {}) },
               ],
               updated: userTs,
             }
@@ -891,6 +894,7 @@ export function AgentDock({
     try {
       const requestBody = {
           message: text,
+          selectedEntities: (selectedEntities.length ? selectedEntities : [...(active?.messages||[])].reverse().find(m=>m.selectedEntities?.length)?.selectedEntities || []).map(({kind,id})=>({kind,id})),
           conversationId,
           stream: true,
           history: prior,
@@ -1181,7 +1185,7 @@ export function AgentDock({
             "flex min-h-0 flex-col overflow-hidden bg-white",
             embedded
               ? "h-full w-full border-l border-border-light shadow-[-8px_0_30px_rgba(16,24,40,0.06)]"
-              : `fixed bottom-5 right-5 z-[120] w-[min(480px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
+              : `fixed bottom-5 right-5 z-[45] w-[min(480px,calc(100vw-2.5rem))] rounded-2xl slide-in-right print:hidden ${POPOVER_SURFACE}`
           )}
           style={!embedded && dockSize ? { width: dockSize.w, height: dockSize.h } : undefined}
         >
@@ -1193,7 +1197,7 @@ export function AgentDock({
             </>
           )}
           {/* Header */}
-          <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border-light bg-gradient-to-b from-white to-surface/40 shrink-0">
+          <div data-agent-dock-header className="flex items-center gap-2.5 px-4 py-3 border-b border-border-light bg-[var(--white)] shrink-0">
             <span className="w-8 h-8 rounded-xl bg-blue-primary text-white flex items-center justify-center shrink-0 shadow-[0_2px_8px_rgba(0,113,227,0.35)]">
               <Sparkles size={16} strokeWidth={1.9} />
             </span>
@@ -1224,7 +1228,7 @@ export function AgentDock({
             </button>
             {!embedded && (
               <Link
-                href={activeId ? `/agent?conversation=${encodeURIComponent(activeId)}` : "/agent"}
+                href={activeId ? `/agent/chat/${encodeURIComponent(activeId)}` : "/agent"}
                 onClick={busy ? (event) => event.preventDefault() : undefined}
                 aria-label={busy ? "Wait for the answer before opening full chat" : "Open this conversation in the full Agent chat"}
                 aria-disabled={busy}
@@ -1364,6 +1368,16 @@ export function AgentDock({
               embedded || dockSize ? "min-h-0" : "h-[460px] max-h-[66vh]"
             )}
           >
+            {!entitiesReady || !historyReady ? (
+              <div role="status" aria-label="Loading chat" className="space-y-3 motion-safe:animate-pulse">
+                <div className="max-w-[92%] space-y-2 rounded-2xl rounded-bl-md bg-surface px-3.5 py-3">
+                  <div className="h-3 w-4/5 rounded bg-border-light" />
+                  <div className="h-3 w-full rounded bg-border-light" />
+                  <div className="h-3 w-2/3 rounded bg-border-light" />
+                </div>
+                <span className="sr-only">Loading chat</span>
+              </div>
+            ) : (
             <div ref={messageContentRef} className="space-y-2.5">
             <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 text-[13px] leading-[1.55] text-text-primary">
               <AgentResponseMarkdown text={greeting} entities={entities} linkable={!offeringsOnly} />
@@ -1416,7 +1430,7 @@ export function AgentDock({
                           entityContext={m.entityContext}
                         />
                       ) : (
-                        m.text
+                        <MentionedText text={m.text} selected={m.selectedEntities} entities={entities} />
                       )}
                     </div>
                     {m.role === "agent" && m.pendingAction ? (
@@ -1460,6 +1474,7 @@ export function AgentDock({
               </p>
             )}
             </div>
+            )}
           </div>
 
           {/* Suggestions (only before the first exchange) + input */}
@@ -1512,29 +1527,7 @@ export function AgentDock({
               >
                 <Paperclip size={16} strokeWidth={2} />
               </button>
-              <input
-                onPaste={(e) => {
-                  if (e.clipboardData.files.length) {
-                    e.preventDefault();
-                    attach.addFiles(e.clipboardData.files);
-                  }
-                }}
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && ask()}
-                placeholder={
-                  focusedSubject
-                    ? `Ask about ${focusedSubject}…`
-                    : "Ask your agent…"
-                }
-                /* The box you type in has to look like a box (Anir, Aug 15:
-                   "the text box in the AI chatbot is a little bit hard to
-                   see"). It was a barely-there grey fill with border-none on
-                   a white card, so there was no edge at all. Same border and
-                   focus ring every other input in the app uses. */
-                className="min-w-0 flex-1 rounded-xl border border-border-light bg-white px-3.5 py-2.5 text-[13px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-blue-primary"
-              />
+              <EntityComposer editorRef={inputRef} value={input} onChange={setInput} entities={entities} selected={selectedEntities} onSelected={setSelectedEntities} onSend={()=>ask()} onFiles={attach.addFiles} placeholder="Ask about your work…" />
               <button
                 onClick={() => ask()}
                 disabled={(!input.trim() && !attach.sendable) || attach.uploading || busy}
@@ -1575,7 +1568,7 @@ export function AgentDock({
             // floating dock simply never got it.
             embedded
               ? "relative mx-auto mb-5 mt-auto"
-              : "fixed bottom-5 right-5 z-[120] print:hidden",
+              : "fixed bottom-5 right-5 z-[45] print:hidden",
             "bg-blue-primary hover:bg-blue-hover shadow-[0_8px_24px_-6px_rgba(0,113,227,0.55)] hover:shadow-[0_12px_30px_-6px_rgba(0,113,227,0.65)] hover:-translate-y-0.5"
           )}
         >
@@ -1599,7 +1592,7 @@ export function AgentDock({
         <div
           role="status"
           className={cn(
-            "fixed bottom-[30px] right-[88px] z-[120] flex max-w-[min(340px,calc(100vw-7rem))] items-center gap-1 rounded-full bg-white py-1 pl-3.5 pr-1 text-[13px] text-text-primary print:hidden slide-in-right",
+            "fixed bottom-[30px] right-[88px] z-[45] flex max-w-[min(340px,calc(100vw-7rem))] items-center gap-1 rounded-full bg-white py-1 pl-3.5 pr-1 text-[13px] text-text-primary print:hidden slide-in-right",
             POPOVER_SURFACE
           )}
         >

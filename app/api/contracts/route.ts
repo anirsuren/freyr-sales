@@ -10,6 +10,7 @@ import {
   moduleCreateRefusal,
   moduleDeleteRefusal,
   moduleWriteRefusal,
+  recordWriteRefusal,
 } from "@/lib/moduleAccessServer";
 import { todayISO } from "@/lib/utils";
 
@@ -207,6 +208,12 @@ export async function POST(req: NextRequest) {
       const before = wasId
         ? (await readContracts()).contracts.find((c) => c.id === wasId) ?? null
         : null;
+      if (before) {
+        const refusal = await recordWriteRefusal("/contracts", {
+          id: before.id, owner: before.owner, created_by: before.createdBy,
+        });
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+      }
       const saved = await saveContract(body.contract ?? {}, me.name);
       /* Posting the money is a second write, so it saves again with whatever
          handle came back. A failure here must not lose the contract itself,

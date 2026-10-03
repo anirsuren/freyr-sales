@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -165,7 +167,7 @@ export function FilterMenu({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: MouseEvent) => {
+    const onDown = (event: Event) => {
       const target = event.target as Node;
       if (panelRef.current?.contains(target)) return;
       if (buttonRef.current?.contains(target)) return;
@@ -173,16 +175,18 @@ export function FilterMenu({
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      // Escape steps BACK a layer before it closes: a menu that throws away
-      // your place on the first press makes the second layer expensive.
-      if (layer) setLayer(null);
-      else setOpen(false);
+      // Both columns are already visible; Escape dismisses the whole menu.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      setLayer(null);
+      buttonRef.current?.focus({ preventScroll: true });
     };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDown);
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [open, layer]);
 
@@ -238,7 +242,7 @@ export function FilterMenu({
             role="dialog"
             aria-label={ariaLabel}
             style={{ top: box.top, left: box.left, width: box.width }}
-            className="menu-in fixed z-[130] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            className="menu-in fixed z-[260] overflow-hidden rounded-xl border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
             {/* CATEGORIES LEFT, THEIR OPTIONS RIGHT (Saras, Aug 24 call,
                 with a shopping site as the reference: "currently we click the
@@ -373,7 +377,9 @@ export function FilterMenu({
                       {current.content ? (
                         <div className="p-3">{current.content}</div>
                       ) : visibleOptions(current.options, query).length === 0 ? (
-                        <p className="px-3 py-6 text-center text-[12.5px] text-text-tertiary">Nothing matches &ldquo;{query}&rdquo;.</p>
+                        <p className="px-3 py-6 text-center text-[12.5px] text-text-tertiary">
+                          {query.trim() ? <>Nothing matches &ldquo;{query.trim()}&rdquo;.</> : "No values available for this filter yet."}
+                        </p>
                       ) : visibleOptions(current.options, query).map((option) => {
                         const on = current.values.includes(option.value);
                         return (

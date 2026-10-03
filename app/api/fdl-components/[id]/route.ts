@@ -11,7 +11,7 @@ import {
   type FdlRelease,
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
-import { moduleDeleteRefusal } from "@/lib/moduleAccessServer";
+import { moduleDeleteRefusal, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { getCurrentUser } from "@/lib/currentUser";
 import { GENERIC_USER_IDENTITY } from "@/lib/userIdentity";
 
@@ -127,6 +127,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleWriteRefusal("/components");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await canManageOfferings())) {
     return NextResponse.json(
       { error: "Only admins and editors can edit components." },

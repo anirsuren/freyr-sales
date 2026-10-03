@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { importOfferingsWorkbook } from "@/lib/offeringsImport";
 import { commitOfferingsChange } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 const MAX_WORKBOOK_BYTES = 5 * 1024 * 1024;
@@ -9,6 +10,8 @@ const MAX_WORKBOOK_BYTES = 5 * 1024 * 1024;
 // Accepts a multipart upload of Suren's Excel and upserts offerings, categories,
 // and types so Saras doesn't have to re-enter the data by hand.
 export async function POST(req: Request) {
+  const refusal = await moduleCreateRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only: admin access required" },

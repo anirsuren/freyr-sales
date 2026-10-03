@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getFdlComponent, initializeLiveOfferings } from "@/lib/offerings";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { getMaterialServeUrl } from "@/lib/materialStorage";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleReadRefusal("/components");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
   const { id } = await params;
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor)

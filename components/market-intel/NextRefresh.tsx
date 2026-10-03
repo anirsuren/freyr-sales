@@ -74,19 +74,23 @@ export function RefreshChip({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: MouseEvent) => {
+    const onDown = (event: Event) => {
       if (!anchorRef.current?.contains(event.target as Node) && !panelRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("click", onDown, true);
+    document.addEventListener("focusin", onDown, true);
     document.addEventListener("keydown", onKey);
     const close = () => setOpen(false);
     window.addEventListener("resize", close);
     window.addEventListener("scroll", close, true);
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("click", onDown, true);
+      document.removeEventListener("focusin", onDown, true);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", close, true);

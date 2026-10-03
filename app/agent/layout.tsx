@@ -12,7 +12,7 @@ export default function AgentLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname() || "";
-  if (pathname === "/agent") return <>{children}</>;
+  if (pathname === "/agent" || pathname.startsWith("/agent/chat/") || pathname === "/mock-mode/agent" || pathname.startsWith("/mock-mode/agent/chat/")) return <>{children}</>;
   // AppShell already pads non-full-bleed pages; just add the tab bar.
   return (
     <>

@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -64,13 +66,13 @@ export function FolderBrowserSelect({
     const top = spaceBelow > 300 ? rect.bottom + 6 : undefined;
     const bottom =
       spaceBelow > 300 ? undefined : window.innerHeight - rect.top + 6;
-    setMenuStyle({ position: "fixed", top, bottom, left, width, zIndex: 200 });
+    setMenuStyle({ position: "fixed", top, bottom, left, width, zIndex: 260 });
     setOpen(true);
   };
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (event: MouseEvent) => {
+    const onDoc = (event: Event) => {
       const target = event.target as Node;
       if (
         triggerRef.current &&
@@ -96,12 +98,21 @@ export function FolderBrowserSelect({
           : prev
       );
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
+    };
     const onResize = () => setOpen(false);
-    document.addEventListener("pointerdown", onDoc, true);
+    document.addEventListener("keydown", onKey, true);
+    const stopOutside = listenForOutsideInteraction(onDoc);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", onDoc, true);
+      document.removeEventListener("keydown", onKey, true);
+      stopOutside();
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, {
         capture: true,

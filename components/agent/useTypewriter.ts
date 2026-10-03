@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * THE REVEAL, SHARED BY BOTH AGENT SURFACES.
@@ -15,34 +15,36 @@ import { useEffect, useRef, useState } from "react";
  * timing and layout. Both pass the revealed string to the shared response
  * renderer, so tables, links, and entity pills stay the same across views.
  *
- * Timing matches the agent page exactly — ~140 frames over the whole reply at
- * 14ms — so a long answer takes about as long as a short one and neither
- * crawls.
+ * Only non-streamed answers need a reveal. Use elapsed time rather than a
+ * chain of render-dependent timers: a busy tab catches up instead of adding
+ * another delay for every letter. Limit Markdown updates to 25 per second.
  */
 export function useTypewriter(text: string, active: boolean): string {
-  const [n, setN] = useState(active ? 0 : text.length);
-  const doneRef = useRef(false);
+  const [reveal, setReveal] = useState({ text, active, n: active ? 0 : text.length });
 
   useEffect(() => {
-    if (!active) {
-      setN(text.length);
+    if (!active || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setReveal({ text, active, n: text.length });
       return;
     }
-    setN(0);
-    doneRef.current = false;
+    setReveal({ text, active, n: 0 });
+    if (!text.length) return;
+    const started = performance.now();
+    const duration = Math.min(900, Math.max(180, text.length * 0.35));
+    let frame = 0, lastPaint = started;
+    const tick = (now: number) => {
+      const n = Math.min(text.length, Math.ceil(text.length * (now - started) / duration));
+      if (now - lastPaint >= 40 || n === text.length) {
+        lastPaint = now;
+        setReveal({ text, active, n });
+      }
+      if (n < text.length) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [text, active]);
 
-  useEffect(() => {
-    if (!active || n >= text.length) return;
-    const step = Math.max(2, Math.round(text.length / 140));
-    const t = setTimeout(
-      () => setN((x) => Math.min(text.length, x + step)),
-      14
-    );
-    return () => clearTimeout(t);
-  }, [n, text, active]);
-
-  return active ? text.slice(0, n) : text;
+  return active ? text.slice(0, reveal.text === text && reveal.active ? reveal.n : 0) : text;
 }
 
 /**

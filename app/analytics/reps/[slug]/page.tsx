@@ -49,8 +49,7 @@ import { Customer360 } from "@/components/customers/Customer360";
 import { opportunityValue } from "@/lib/opportunitiesShared";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
-import { CompanyLink, EntityLink } from "@/components/ui/EntityLink";
-import { customerHref } from "@/lib/entityHref";
+import { CompanyLink } from "@/components/ui/EntityLink";
 import { addMockModePrefix } from "@/lib/modeUrl";
 import { SHOWROOM_PEOPLE_NAMES } from "@/lib/offerings";
 
@@ -245,56 +244,16 @@ export default async function RepPage({
           <Customer360
             company={member.name}
             bands={person360}
+            inlineTabLink
+            tableKeys={["opportunities"]}
             unboxed
           />
         )}
-        {myOpen.length === 0 && person360.length === 0 ? (
+        {myOpen.length === 0 && person360.length === 0 && (
           <p className="text-[12.5px] text-text-tertiary">
             Deals, meetings and activity charts fill in here as {member.name.split(" ")[0]} logs real work.
           </p>
-        ) : myOpen.length > 0 ? (
-          /* A profile opened from the roster has to show the deals behind the
-             tile, or the drill-down says less than the row it came from. */
-          <Card className="overflow-hidden p-0">
-            <div className="border-b border-border-light px-4 py-3">
-              <h2 className="text-[13px] font-bold text-text-primary">Open deals</h2>
-              <p className="mt-0.5 text-[12px] text-text-secondary">
-                Every current deal with {member.name.split(" ")[0]}&rsquo;s name on it.
-              </p>
-            </div>
-            {/* THE MONEY RIDES THE NAME (Anir, Aug 27: "I hate when you
-                have something on the left and then I have to look like a
-                hundred thousand pixels to the right just to see it"). Value
-                rides the title line, nothing flushed across the card. The
-                weighted figure that used to sit beside the customer came off
-                on Anir, Sep 2: "they dont use weighted". */}
-            <ul className="divide-y divide-border-light">
-              {myOpen.map((deal) => (
-                <li key={deal.id} className="flex items-center gap-3 px-4 py-3">
-                  <EntityLink href={customerHref(deal.customerId, deal.customer)} className="shrink-0" title={deal.customer}>
-                    <CompanyLogo
-                      name={deal.customer}
-                      className="h-8 w-8 shrink-0 text-[9px]"
-                    />
-                  </EntityLink>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="truncate text-[13px] font-semibold text-text-primary">
-                        {deal.name}
-                      </span>
-                      <b className="text-[13px] font-bold text-text-primary tnum">
-                        {formatMoney(opportunityValue(deal))}
-                      </b>
-                    </span>
-                    <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[12px]">
-                      <EntityLink href={customerHref(deal.customerId, deal.customer)} className="truncate text-text-secondary">{deal.customer}</EntityLink>
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ) : null}
+        )}
       </div>
     );
   }

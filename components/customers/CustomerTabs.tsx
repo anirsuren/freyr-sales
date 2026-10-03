@@ -1,4 +1,7 @@
 "use client";
+
+import { CityLookup } from "./CustomerLookups";
+import { FormSection } from "@/components/ui/FormSection";
 import { DateField } from "@/components/ui/DateField";
 
 import { EditableFact } from "@/components/opportunities/EditableFact";
@@ -139,19 +142,6 @@ function aboutDraftFor(customer: Customer) {
     enrichment_summary: customer.enrichment_summary ?? "",
   };
 }
-
-const COMMON_CITIES: Record<string, string[]> = {
-  Switzerland: ["Basel", "Bern", "Geneva", "Lausanne", "Zurich"],
-  "United States": ["Boston", "Chicago", "New York", "Philadelphia", "Princeton", "San Francisco"],
-  "United Kingdom": ["Cambridge", "Edinburgh", "London", "Manchester", "Oxford"],
-  Germany: ["Berlin", "Frankfurt", "Hamburg", "Munich"],
-  France: ["Lyon", "Marseille", "Paris"],
-  India: ["Bengaluru", "Delhi", "Hyderabad", "Mumbai", "Pune"],
-  Canada: ["Montreal", "Ottawa", "Toronto", "Vancouver"],
-  Singapore: ["Singapore"],
-  Japan: ["Osaka", "Tokyo"],
-  Australia: ["Melbourne", "Sydney"],
-};
 
 function locationParts(geography: string): { country: string; city: string } {
   const value = geography.trim();
@@ -632,7 +622,6 @@ export function CustomerTabs({
   const [editingAbout, setEditingAbout] = useState(false);
   const [aboutDraft, setAboutDraft] = useState(() => aboutDraftFor(customer));
   const { country: aboutCountry, city: aboutCity } = locationParts(aboutDraft.geography);
-  const cityChoices = [...new Set([aboutCity, ...(COMMON_CITIES[aboutCountry] ?? [])].filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const [aboutSaving, setAboutSaving] = useState(false);
   const [aboutError, setAboutError] = useState("");
   /* The Account card's Edit pop-up: owner and competitor, saved together. */
@@ -708,6 +697,7 @@ export function CustomerTabs({
     isKey: false,
     email: "",
     phone: "",
+    phoneRegion: "United States",
     linkedinUrl: "",
   });
 
@@ -786,6 +776,7 @@ export function CustomerTabs({
       isKey: false,
       email: "",
       phone: "",
+      phoneRegion: "United States",
       linkedinUrl: "",
     });
     setShowDeal(false);
@@ -1017,6 +1008,7 @@ export function CustomerTabs({
       isKey: false,
       email: "",
       phone: "",
+      phoneRegion: "United States",
       linkedinUrl: "",
     });
   }
@@ -1036,6 +1028,7 @@ export function CustomerTabs({
       isKey: isKeyContact(contact, displayedContacts.findIndex((item) => item.id === contact.id)),
       email: contact.email ?? "",
       phone: contact.phone ?? "",
+      phoneRegion: countryFromDialOption(dialOptionValue(splitPhone(contact.phone).dial || "+1"))?.name ?? "United States",
       linkedinUrl: contact.linkedin_url ?? "",
     });
     setContactModalOpen(true);
@@ -1132,6 +1125,7 @@ export function CustomerTabs({
         isKey: false,
         email: "",
         phone: "",
+      phoneRegion: "United States",
         linkedinUrl: "",
       });
       if (!editingContact) window.location.reload();
@@ -2489,7 +2483,7 @@ export function CustomerTabs({
             applicable={offeringsCatalog.applicable}
             inUse={offeringsCatalog.inUse}
             usage={customer.offering_usage || []}
-            canEdit={canEditFacts}
+            canEdit={mayPatchAccount}
           />
         )}
 
@@ -3177,7 +3171,7 @@ export function CustomerTabs({
               category: o.category ?? null,
             }))}
             canEdit
-            canEditAccount={canEditFacts}
+            canEditAccount={mayPatchAccount}
           >
             <InteractionTimeline
               interactions={interactions}
@@ -3488,19 +3482,10 @@ export function CustomerTabs({
                 field now, labelled the way every other field is. */}
             <div role="group" aria-label="Locations" className="grid min-w-0 grid-cols-2 gap-2">
               <Field label="City">
-                <ColorSelect
-                  ariaLabel="City"
-                  value={aboutCity}
-                  onChange={(city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city, draft.geography) }))}
-                  fill
-                  searchable
-                  className="w-full"
-                  options={[
-                    { value: "", label: aboutCountry ? "Choose city" : "Choose country first", noMark: true },
-                    ...cityChoices.map((city) => ({ value: city, label: city, noMark: true })),
-                  ]}
-                  onCreateQuery={aboutCountry ? (city) => setAboutDraft((draft) => ({ ...draft, geography: locationGeography(aboutCountry, city.slice(0, 100), draft.geography) })) : undefined}
-                />
+                <CityLookup country={aboutCountry} value={aboutCity}
+                  onChange={(city) => setAboutDraft(draft => ({ ...draft, geography: locationGeography(aboutCountry, city, draft.geography) }))}
+                  onPick={(city, country) => setAboutDraft(draft => ({ ...draft, geography: locationGeography(country, city, draft.geography) }))}
+                  inputClassName="w-full rounded-lg border border-border px-3 py-2.5 text-[13px] outline-none focus:border-blue-primary" />
               </Field>
               <Field label="Country">
                 <ColorSelect
@@ -3883,8 +3868,10 @@ export function CustomerTabs({
         onClose={closeContactModal}
         title={editingContact ? `Edit ${editingContact.full_name}` : `Add a contact at ${customer.company_name}`}
         size="workflow"
+        dialogClassName="h-[90vh]"
+        bodyClassName="flex flex-col !overflow-hidden"
       >
-        <div className="space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-5 pr-1">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-light bg-surface px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <CompanyLogo name={customer.company_name} className="h-9 w-9 shrink-0" />
@@ -3903,9 +3890,8 @@ export function CustomerTabs({
               {contactForm.isKey ? "Key contact" : "Mark as key contact"}
             </button>
           </div>
-          <div>
-            <div className="mb-3 flex items-center gap-2 border-b border-border-light pb-2 text-[13px] font-semibold text-text-primary"><Briefcase size={16} className="text-blue-primary" /> Professional details</div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <FormSection title="Professional details" icon={Briefcase} hint="Name, role and responsibilities." defaultOpen={true}>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Full name" required>
               <Input
                 autoFocus
@@ -3967,10 +3953,9 @@ export function CustomerTabs({
               />
             </div>
             </div>
-          </div>
-          <div>
-            <div className="mb-3 flex items-center gap-2 border-b border-border-light pb-2 text-[13px] font-semibold text-text-primary"><Mail size={16} className="text-blue-primary" /> Reach this person</div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          </FormSection>
+          <FormSection title="Reach this person" icon={Mail} hint="Contact details and location." defaultOpen={false}>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Email">
               <Input
                 type="email"
@@ -3988,8 +3973,7 @@ export function CustomerTabs({
             <Field label="Phone">
               {(() => {
                 const { dial: storedDial, number } = splitPhone(contactForm.phone);
-                const countryDial = findCountry(contactForm.country)?.dial;
-                const dial = storedDial || (countryDial ? `+${countryDial}` : "+1");
+                const dial = storedDial || `+${findCountry(contactForm.phoneRegion)?.dial || "1"}`;
                 /* THE CODE IS SMALL, THE NUMBER GETS THE ROOM (Anir, Oct 1:
                    "it's literally just two numbers... the phone number field,
                    not the prefix, the suffix, can be bigger"). The code box is
@@ -3999,15 +3983,15 @@ export function CustomerTabs({
                 return <div className="flex items-center gap-2">
                   <div className="w-[108px] shrink-0">
                     <ColorSelect
-                      value={dialOptionValue(dial, contactForm.country)}
+                      value={dialOptionValue(dial, contactForm.phoneRegion)}
                       ariaLabel="Phone country and dialing code"
                       fill
-                      triggerLabel={dialTriggerLabel(dial, contactForm.country)}
+                      triggerLabel={dialTriggerLabel(dial, contactForm.phoneRegion)}
                       options={dialOptions()}
                       onChange={(value) => {
                         const nextDial = dialCodeFromOption(value);
                         const country = countryFromDialOption(value);
-                        setContactForm((form) => ({ ...form, phone: joinPhone(nextDial, number), country: country?.name ?? form.country }));
+                        setContactForm((form) => ({ ...form, phone: joinPhone(nextDial, number), phoneRegion: country?.name ?? form.phoneRegion }));
                       }}
                     />
                   </div>
@@ -4027,9 +4011,8 @@ export function CustomerTabs({
               })()}
               {(() => {
                 const { dial, number } = splitPhone(contactForm.phone);
-                const countryDial = findCountry(contactForm.country)?.dial;
-                const why = phoneProblem(dial || (countryDial ? `+${countryDial}` : "+1"), number);
-                return why ? <p className="mt-1 text-[12px] text-error">{why}</p> : null;
+                const why = phoneProblem(dial || `+${findCountry(contactForm.phoneRegion)?.dial || "1"}`, number);
+                return <p aria-live="polite" className="mt-1 min-h-9 text-[12px] leading-[18px] text-error">{why || "\u00a0"}</p>;
               })()}
             </Field>
             <Field label="LinkedIn URL">
@@ -4041,14 +4024,10 @@ export function CustomerTabs({
             </Field>
             <div className="min-w-0">
               <p className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-text-primary">Country <OptionalMark /></p>
-              <ColorSelect value={contactForm.country} onChange={(value) => setContactForm((form) => {
-                const country = findCountry(value);
-                const { number } = splitPhone(form.phone);
-                return { ...form, country: value, phone: number && country ? joinPhone(`+${country.dial}`, number) : form.phone };
-              })} options={[{ value: "", label: "Choose a country", icon: MapPin }, ...countryOptions()]} fill ariaLabel="Country" />
+              <ColorSelect value={contactForm.country} onChange={(country) => setContactForm(form => ({ ...form, country }))} options={[{ value: "", label: "Choose a country", icon: MapPin }, ...countryOptions()]} fill ariaLabel="Country" />
             </div>
             <Field label="City">
-              <Input value={contactForm.city} onChange={(event) => setContactForm((form) => ({ ...form, city: event.target.value }))} placeholder="e.g. New Brunswick" maxLength={120} />
+              <CityLookup country={contactForm.country} value={contactForm.city} onChange={(city) => setContactForm(form => ({ ...form, city }))} onPick={(city, country) => setContactForm(form => ({ ...form, city, country }))} inputClassName="w-full rounded-lg border border-border px-3 py-2.5 text-[13px] outline-none focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20" />
             </Field>
             {/* No "View on Google Maps" button here (Anir, Oct 1: "Why is there
                 a View on Google Maps button? ... Remove that"). It appeared in
@@ -4056,10 +4035,9 @@ export function CustomerTabs({
                 row changed shape as you typed. Country and City now end the
                 grid the same way Department and Buying role end the one above. */}
             </div>
-          </div>
-          <div>
-            <div className="mb-3 flex items-center gap-2 border-b border-border-light pb-2 text-[13px] font-semibold text-text-primary"><FileText size={16} className="text-blue-primary" /> Context</div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          </FormSection>
+          <FormSection title="Context" icon={FileText} hint="Background and relationship notes." defaultOpen={false}>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
                 <label htmlFor="contact-background" className="mb-1.5 block text-[13px] font-medium text-text-primary">Professional background <OptionalMark /></label>
                 <textarea id="contact-background" value={contactForm.background} onChange={(event) => setContactForm((form) => ({ ...form, background: event.target.value }))} placeholder="Experience, expertise, and relevant history" maxLength={2000} rows={3} className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus" />
@@ -4069,8 +4047,9 @@ export function CustomerTabs({
                 <textarea id="contact-relationship" value={contactForm.relationshipNotes} onChange={(event) => setContactForm((form) => ({ ...form, relationshipNotes: event.target.value }))} placeholder="What your team knows about working with this person" maxLength={2000} rows={3} className="w-full resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus" />
               </div>
             </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 border-t border-border-light pt-4">
+          </FormSection>
+        </div>
+          <div className="mt-4 flex shrink-0 items-center justify-end gap-2 border-t border-border-light bg-white pt-4">
             {/* Far left, red, and only for a person who already exists and
                 only when the route would let you remove them: the same
                 canDeleteContacts the card's trash is drawn on. */}
@@ -4101,7 +4080,6 @@ export function CustomerTabs({
               {editingContact ? "Save changes" : "Add contact"}
             </Button>
           </div>
-        </div>
       </Modal>
 
       {/* ALWAYS MOUNTED, WHATEVER TAB IS OPEN (Anir, Sep 4: "the button
@@ -4166,7 +4144,7 @@ export function CustomerTabs({
               rows={4}
               autoFocus
               /* The Input component's own look, at textarea height. */
-              className="min-h-[300px] w-full min-w-0 resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
+              className="min-h-[240px] w-full min-w-0 resize-y rounded-lg border border-border-light bg-white px-3 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary outline-none transition focus:border-blue-primary focus:shadow-input-focus"
             />
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

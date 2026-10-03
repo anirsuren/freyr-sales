@@ -10,6 +10,7 @@ import {
   vertexConverseAgentic,
   vertexStatus,
 } from "./vertex";
+import { assertAgentQaProvider } from "./agentQaBudget";
 
 export type AgentProvider = "anthropic" | "vertex";
 
@@ -62,6 +63,7 @@ export async function agentConversePrimary(
     if (signal?.aborted) return null;
     // Anthropic can be configured in the database rather than the process
     // environment. Load that key before deciding whether a fallback exists.
+    assertAgentQaProvider("anthropic");
     await hydrateAnthropicKey();
     if (signal?.aborted || !hasClaudeClient()) return null;
     console.warn(
@@ -69,6 +71,7 @@ export async function agentConversePrimary(
     );
     onReset?.();
   }
+  assertAgentQaProvider("anthropic");
   const result = await claudeConverseAgentic(system, turns, tools, runTool, maxSteps, onText, onReset, signal);
   return result ? { ...result, provider: "anthropic" } : null;
 }

@@ -1308,6 +1308,7 @@ export const ACTIONS: ActionDef[] = [
       what: { type: "string", description: "What to remind them about, in their words." },
       when: { type: "string", description: "The day (a date or words like tomorrow, Friday, next week), or a moment like 'in 2 hours'." },
       time: { type: "string", description: "The time of day they gave, like 9am, 3:30pm, 15:00 or noon. Required: when they gave none, ask them for it instead of proposing." },
+      timeZone: { type: "string", description: "An explicit IANA timezone supplied by the person, such as America/New_York. Omit when none was supplied." },
       account: { type: "string", description: "Optional customer account it is about." },
     },
     // Time is checked in prepare, so a missing one is asked for in words, not as "needs time".
@@ -1315,22 +1316,30 @@ export const ACTIONS: ActionDef[] = [
     async prepare(params, ctx) {
       const what = str(params.what, 500);
       if (!what) return { error: "What should I remind you about?" };
-      const when = str(params.when, 80);
+      const rawWhen = str(params.when, 120);
+      const explicitZone = str(params.timeZone, 80) || rawWhen.match(/\b(?:[A-Za-z_]+\/){1,2}[A-Za-z_+-]+\b/)?.[0];
+      if (explicitZone) {
+        try { new Intl.DateTimeFormat("en", { timeZone: explicitZone }).format(); }
+        catch { return { error: "That timezone is not recognized. Which timezone should I use?" }; }
+      }
+      const requestedZone = explicitZone || ctx.timeZone;
+      const when = explicitZone ? rawWhen.replace(explicitZone, "").trim() : rawWhen;
       // "Remind me yesterday" could not be read as a day at all, so it was asked "when?" instead of told the day has gone (Sep 30).
       if (/\b(?:yesterday|last (?:night|week|month)|\d+ (?:days?|weeks?) ago)\b/i.test(when)) {
         return { error: "That day has already passed. Which day should I remind you?" };
       }
       // "monday at 9am" is a day AND a time (found over WhatsApp, Sep 30).
-      const parsedWhen = splitDayTime(when, ctx.timeZone);
+      const parsedWhen = splitDayTime(when, requestedZone);
       const day = parsedWhen?.day ?? null;
       if (!day) return { error: "When should I remind you? A date or words like tomorrow or Friday both work." };
-      if (day < localDay(new Date(), ctx.timeZone).ymd) return { error: `That date (${readableDay(day)}) has already passed. When should I remind you?` };
+      if (day < localDay(new Date(), requestedZone).ymd) return { error: `That date (${readableDay(day)}) has already passed. When should I remind you?` };
       const time = reminderTime(str(params.time, 20)) || parsedWhen?.time || "";
       /* A reminder is a message at a minute (Anir, Oct 1: "how can it just give
          a reminder at a day? It has to give a reminder at a time... The user
          has to give a time"). No time said: ask for one, never pick it. */
       if (!time) return { error: `What time ${readableDay(day)} should I remind you? For example 9am or 14:30.` };
-      if (zonedInstant(day, time, ctx.timeZone) <= Date.now()) {
+      const instant = zonedInstant(day, time, requestedZone);
+      if (instant <= Date.now()) {
         return { error: `${time} ${readableDay(day)} has already passed. What time should I remind you?` };
       }
       let account: { id: string; name: string } | undefined;
@@ -1341,8 +1350,8 @@ export const ACTIONS: ActionDef[] = [
         if (hit) account = { id: hit.id, name: hit.company_name };
       }
       return {
-        summary: `Remind you ${readableDay(day)} at ${time}: ${what}.`,
-        params: { what, day, time, accountId: account?.id, accountName: account?.name },
+        summary: `Remind you ${readableDay(day)} at ${time}${explicitZone ? ` ${explicitZone}` : ""}: ${what}.`,
+        params: { what, ...(explicitZone ? { ...localDayTime(instant, ctx.timeZone), requestedDay: day, requestedTime: time, requestedTimeZone: explicitZone } : { day, time }), accountId: account?.id, accountName: account?.name },
         ...(account ? { customerId: account.id, company: account.name } : {}),
       };
     },
@@ -1359,7 +1368,7 @@ export const ACTIONS: ActionDef[] = [
     }),
     /* No link: "Done... [Open it]" pointed at the account page, where the
        reminder is not (it is private and lives with the agent), Sep 30. */
-    done: (p) => ({ text: `I will remind you ${readableDay(String(p.day))}${p.time ? ` at ${p.time}` : ""}: ${p.what}.` }),
+    done: (p) => ({ text: `I will remind you ${readableDay(String(p.requestedDay || p.day))}${p.time ? ` at ${p.requestedTime || p.time}${p.requestedTimeZone ? ` ${p.requestedTimeZone}` : ""}` : ""}: ${p.what}.` }),
   },
   {
     key: "complete_reminder",

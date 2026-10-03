@@ -7,11 +7,14 @@ import { withDemoHeatMapActivity } from "@/lib/customerOfferingHeatMap";
 import { getDataMode } from "@/lib/dataMode";
 import { getDb } from "@/lib/db";
 import { listOfferings } from "@/lib/offerings";
+import { canEditRecord, resolveScope } from "@/lib/recordScope";
+import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const metadata = { title: "Customer Offering Heat Map" };
 export const dynamic = "force-dynamic";
 
 export default async function CustomerOfferingHeatMapPage() {
+  await requireModuleAccess("/reports");
   const offerings = listOfferings()
     .map((offering) => ({
       id: offering.id,
@@ -20,6 +23,11 @@ export default async function CustomerOfferingHeatMapPage() {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const workspaceCustomers = await getDb().customers.list();
+  const scope = await resolveScope();
+  const mayWrite = !(await moduleWriteRefusal("/customers"));
+  const editableCustomerIds = workspaceCustomers
+    .filter((customer) => mayWrite && canEditRecord(customer, "customers", scope))
+    .map((customer) => customer.id);
   const customers = (
     getDataMode() === "mock"
       ? withDemoHeatMapActivity(workspaceCustomers, offerings)
@@ -60,6 +68,7 @@ export default async function CustomerOfferingHeatMapPage() {
       ) : (
         <CustomerOfferingHeatMap
           initialCustomers={customers}
+          editableCustomerIds={editableCustomerIds}
           offerings={offerings}
         />
       )}

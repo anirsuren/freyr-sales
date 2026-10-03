@@ -11,6 +11,7 @@ import {
 } from "@/lib/appSession";
 import { authUrl, browserUrl, configuredAuthOrigin } from "@/lib/authOrigin";
 import { isOfferingsReleasePath } from "@/lib/release";
+import { accessGrantMemberIsActive } from "@/lib/liveAccessGrant";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const PUBLIC_PATHS = new Set([
@@ -421,7 +422,11 @@ export async function middleware(request: NextRequest) {
   ) {
     const grant = await verifyAccessGrant(request.cookies.get(ACCESS_COOKIE)?.value);
     const subject = accessSubject(request, authMode, appSession);
-    if (!grant || !subject || grant.sub !== subject) {
+    const revokedGrant =
+      !!grant &&
+      (pathname.startsWith("/api/") || !/\.[a-z0-9]+$/i.test(pathname)) &&
+      !(await accessGrantMemberIsActive(grant));
+    if (!grant || !subject || grant.sub !== subject || revokedGrant) {
       const response = pathname.startsWith("/api/")
         ? NextResponse.json(
             { error: "Workspace owner approval required", requestId },

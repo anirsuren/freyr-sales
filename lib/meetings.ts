@@ -234,6 +234,19 @@ function normalizeDoc(v: unknown): MeetingDoc | null {
   };
 }
 
+/** Draft uploads append to the current record under the meeting write queue.
+ * The client supplies file metadata, never the author or upload timestamp. */
+function appendDraftDocs(existing: MeetingDoc[], incoming: unknown, by: string): MeetingDoc[] {
+  const docs = [...existing];
+  for (const raw of Array.isArray(incoming) ? incoming : []) {
+    const doc = normalizeDoc(raw);
+    if (!doc || (!doc.docsPath && !doc.url) || docs.some((d) => d.id === doc.id)) continue;
+    if (docs.length >= 200) break;
+    docs.push({ ...doc, addedBy: str(by, 80) || "Unknown", addedAt: new Date().toISOString() });
+  }
+  return docs;
+}
+
 function normalizeMeeting(v: unknown): Meeting | null {
   if (!v || typeof v !== "object") return null;
   const m = v as Partial<Meeting>;
@@ -409,6 +422,8 @@ export type MeetingInput = {
   presenters?: string[];
   /** "who was running the meeting" — the creator unless they say otherwise. */
   owner?: string;
+  /** New uploads from the create/edit form; existing documents stay intact. */
+  docs?: Partial<MeetingDoc>[];
 };
 
 export async function createMeeting(
@@ -443,7 +458,7 @@ export async function createMeeting(
       owner: str(input.owner, 80) || str(input.by, 80) || "Unknown",
       createdAt: new Date().toISOString(),
       notes: [],
-      docs: [],
+      docs: appendDraftDocs([], input.docs, input.by),
     };
     state.meetings.unshift(meeting);
     await writeRow(state);
@@ -454,6 +469,7 @@ export async function createMeeting(
 export async function updateMeeting(input: {
   id: string;
   patch: Partial<MeetingInput> & { owner?: string };
+  by: string;
 }): Promise<void> {
   return withWrite(async () => {
     const state = await readRow();
@@ -474,6 +490,7 @@ export async function updateMeeting(input: {
     if (p.attendees !== undefined) m.attendees = strList(p.attendees, 80);
     if (p.presenters !== undefined) m.presenters = strList(p.presenters, 80);
     if (p.owner !== undefined) m.owner = str(p.owner, 80) || m.owner;
+    if (p.docs !== undefined) m.docs = appendDraftDocs(m.docs, p.docs, input.by);
     await writeRow(state);
   });
 }

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { bumpUsage } from "@/lib/usageCounters";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
-import { DocsApiError, docsStorage, hasDocsStorage } from "@/lib/docsStorage";
+import { DocsApiError } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
 import { getMaterialServeUrl, materialExistsInStore } from "@/lib/materialStorage";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,9 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
   const { id } = await params;
   // First prove workspace membership; material-level authorization follows
   // after the stored row is resolved.

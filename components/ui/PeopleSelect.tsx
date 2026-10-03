@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -46,7 +48,7 @@ export function PeopleSelect({
       setQuery("");
       return;
     }
-    const onDoc = (e: PointerEvent) => {
+    const onDoc = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     /* Escape closes THIS menu and stops there, as ColorSelect's does. Left
@@ -58,11 +60,11 @@ export function PeopleSelect({
       e.preventDefault();
       setOpen(false);
     };
-    document.addEventListener("pointerdown", onDoc, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDoc);
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("pointerdown", onDoc, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 

@@ -209,13 +209,13 @@ type GooglePlace = {
   addressComponents?: { longText?: string; shortText?: string; types?: string[] }[];
 };
 
-async function googlePredictions(input: string, session: string | null, key: string) {
+async function googlePredictions(input: string, session: string | null, key: string, cities = false, countryCode = "") {
   const data = await getJson<{ suggestions?: { placePrediction?: GooglePrediction }[] }>(
     "https://places.googleapis.com/v1/places:autocomplete",
     {
       method: "POST",
       headers: { "X-Goog-Api-Key": key },
-      body: { input, languageCode: "en", ...(session ? { sessionToken: session } : {}) },
+      body: { input, ...(countryCode ? { includedRegionCodes: [countryCode.toLowerCase()] } : {}), ...(cities ? { includedPrimaryTypes: ["(cities)"] } : {}), languageCode: "en", ...(session ? { sessionToken: session } : {}) },
     }
   );
   return (data.suggestions ?? [])
@@ -702,10 +702,10 @@ type PhotonProperties = {
 
 const AREA_TYPES = new Set(["city", "town", "village", "district", "locality"]);
 
-async function openAddresses(query: string): Promise<AddressSuggestion[]> {
-  const data = await recall(`osm:${query.trim().toLowerCase()}`, () =>
+async function openAddresses(query: string, countryCode = ""): Promise<AddressSuggestion[]> {
+  const data = await recall(`osm:${countryCode}:${query.trim().toLowerCase()}`, () =>
     getJson<{ features?: { properties?: PhotonProperties }[] }>(
-      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8&lang=en`
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8&lang=en${countryCode ? `&countrycode=${countryCode.toLowerCase()}` : ""}`
     )
   );
   /* "79 New Oxford Street" finds the street but not always number 79, so the typed number is kept. */
@@ -718,6 +718,7 @@ async function openAddresses(query: string): Promise<AddressSuggestion[]> {
     const type = place.type ?? "";
     if (!type || type === "country" || type === "state" || type === "county") continue;
     const iso = clean(place.countrycode).toUpperCase();
+    if (countryCode && iso !== countryCode.toUpperCase()) continue;
     const area = AREA_TYPES.has(type);
     const street = clean(place.street) || (type === "street" ? clean(place.name) : "");
     const borrowed = !clean(place.housenumber) && type === "street" && !!typedNumber;
@@ -853,4 +854,16 @@ export async function addressDetails(ref: string, session: string | null): Promi
   if (!key || !ref.startsWith("g:")) return null;
   const place = await googlePlace(ref.slice(2), "formattedAddress,postalAddress,addressComponents", session, key);
   return addressFromGoogle(place) ?? null;
+}
+
+export async function searchCities(query: string, session: string | null, countryCode = ""): Promise<LookupResponse<AddressSuggestion>> {
+  const key = googleKey();
+  if (key) {
+    try {
+      const predictions = await googlePredictions(query, session, key, true, countryCode);
+      return { source: "google", credits: ["google"], results: predictions.map(p => ({ ref: `g:${p.placeId}`, main: p.main, detail: p.detail })) };
+    } catch (error) { noteFallback("city search", error); }
+  }
+  const results = await openAddresses(query, countryCode);
+  return { source: "open", credits: ["open"], results: results.filter(p => p.address?.city && !p.address.line1) };
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
@@ -132,20 +134,24 @@ export function DateField({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: PointerEvent) => {
+    const onDown = (event: Event) => {
       const target = event.target as Node;
       if (panelRef.current?.contains(target)) return;
       if (triggerRef.current?.contains(target)) return;
       setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
     };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDown);
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 
@@ -169,6 +175,7 @@ export function DateField({
         title={title}
         aria-label={ariaLabel && required ? `${ariaLabel} (required)` : ariaLabel}
         aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
           /* THE SAME BOX AS INPUT AND EVERY DROPDOWN (Anir, Oct 1: "It should
@@ -221,7 +228,7 @@ export function DateField({
             role="dialog"
             aria-label={ariaLabel || "Choose a date"}
             style={{ left: pos.left, top: pos.top, width: 268 }}
-            className={cn("menu-in z-[130] rounded-xl border border-border-light bg-white p-3 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]", dialogHost ? "absolute" : "fixed")}
+            className={cn("menu-in z-[260] rounded-xl border border-border-light bg-white p-3 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]", dialogHost ? "absolute" : "fixed")}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="text-[13px] font-semibold text-text-primary">

@@ -1,4 +1,6 @@
 const nextBuildCpus = Number.parseInt(process.env.NEXT_BUILD_CPUS || "", 10);
+const localDevelopment = process.env.NODE_ENV === "development" &&
+  process.env.NEXT_DIST_DIR === ".next-local-3006";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -28,7 +30,18 @@ const nextConfig = {
    * ever uploaded came back "no readable text". Left external, it is required
    * at runtime from real node_modules and computes the right path itself.
    */
-  serverExternalPackages: ["ffmpeg-static"],
+  serverExternalPackages: [
+    "ffmpeg-static",
+    // Keep large Node SDKs out of the local compiler route graphs to reduce
+    // memory pressure behind Next's automatic development restarts.
+    // Native imports share one module cache. Keep deployed builds unchanged.
+    ...(localDevelopment ? [
+      "@supabase/supabase-js",
+      "@google/genai",
+      "@anthropic-ai/sdk",
+      "@aws-sdk/client-sesv2",
+    ] : []),
+  ],
   // Disabled so the streaming pipeline effect on the loading page runs exactly
   // once in dev (React StrictMode double-invokes effects, which would fire the
   // SSE pipeline twice).

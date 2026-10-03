@@ -22,6 +22,22 @@ function load(file) {
 const { validateNewSolutioningRequest, validateSolutioningCreation, canAssignSolutioning } = load('lib/solutioningValidation.ts');
 const { SALES_TEAM, MOCK_SOLUTIONING_TEAM, canonicalMockTeammate } = load('lib/salesTeam.ts');
 const access = load('lib/moduleAccess.ts');
+test('Solutioning members follow explicit matrix grants with operation boundaries', () => {
+  for (const route of ['/customers', '/customers/account-1', '/reports', '/reports/customer-offering-heat-map']) {
+    const key = route.startsWith('/customers') ? 'customers' : 'reports';
+    for (const level of ['none', 'view', 'edit', 'create']) {
+      const map = { [key]: level };
+      assert.equal(access.canAccessModuleWith(route, 'sol_member', map), level !== 'none');
+      assert.equal(access.canWriteModuleWith(route, 'sol_member', map), ['edit', 'create'].includes(level));
+      assert.equal(access.canCreateModuleWith(route, 'sol_member', map), level === 'create');
+      assert.equal(access.canDeleteModuleWith(route, 'sol_member', map), level === 'create');
+    }
+    assert.equal(access.canAccessModuleWith(route, 'sol_member', {}), false);
+    assert.equal(access.canAccessModuleWith(route, 'sol_member', null), false);
+  }
+  assert.equal(access.canAccessModuleWith('/pipeline', 'sol_member', { customers: 'view' }), false);
+  assert.equal(access.canAccessModuleWith('/settings', 'sol_member', {}), true);
+});
 test('Mock Solutioning assignees use canonical roster names', () => {
   for (const name of MOCK_SOLUTIONING_TEAM) {
     assert.ok(SALES_TEAM.includes(name), `${name} must exist on the team roster`);

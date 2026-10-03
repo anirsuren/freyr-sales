@@ -232,7 +232,7 @@ export function CustomerCard({
                   <Link
                     href={`/customers/${customer.id}`}
                     aria-label={`Open ${customer.company_name}`}
-                    className="min-w-0 text-[16px] font-semibold text-text-primary truncate rounded-sm outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:ring-2 focus-visible:ring-blue-primary group-hover:text-blue-primary transition-colors"
+                    className={cn(selectMode ? "relative z-30" : "after:absolute after:inset-0 after:rounded-xl after:content-['']", "min-w-0 text-[16px] font-semibold text-text-primary truncate rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-primary group-hover:text-blue-primary transition-colors")}
                   >
                     {customer.company_name}
                   </Link>

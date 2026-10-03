@@ -25,6 +25,7 @@ import type { RecommendedService } from "@/lib/types";
 import { geographyWithFlag } from "@/lib/countryFlags";
 import { tint } from "@/lib/tint";
 import { DateText } from "@/components/ui/DateText";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 import { CompanyLink, PersonLink } from "@/components/ui/EntityLink";
 import { isSomebody } from "@/lib/entityHref";
 
@@ -36,6 +37,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/customers");
   const { id } = await params;
   const customer = await getDb().customers.get(id);
   return {
@@ -79,6 +81,7 @@ export default async function AccountReportPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/customers");
   const id = (await params).id;
   const db = getDb();
   const customer = await db.customers.get(id);

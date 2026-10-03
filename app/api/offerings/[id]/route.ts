@@ -33,6 +33,7 @@ import {
 import { getDataMode } from "@/lib/dataMode";
 import {
   moduleDeleteRefusal,
+  moduleReadRefusal,
   moduleWriteRefusal,
 } from "@/lib/moduleAccessServer";
 
@@ -58,6 +59,8 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const offering = getOffering((await params).id);
   if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const people = await listAssignablePeople();

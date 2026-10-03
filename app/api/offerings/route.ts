@@ -27,7 +27,7 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { getDataMode } from "@/lib/dataMode";
-import { moduleCreateRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal, moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,8 @@ const FORBIDDEN = NextResponse.json(
 );
 
 export async function GET() {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const people = await listAssignablePeople();
   const offeringsWithRoadmapAccess = await Promise.all(
     listOfferings().map(async (offering) => {

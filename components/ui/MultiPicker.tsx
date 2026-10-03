@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
@@ -295,7 +297,7 @@ function DropdownPicker({
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: PointerEvent) => {
+    const onDoc = (e: Event) => {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -338,13 +340,13 @@ function DropdownPicker({
       if (!rect) return;
       setMenuStyle(() => sideStyle(rect));
     };
-    document.addEventListener("pointerdown", onDoc, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDoc);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", onDoc, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
     };
@@ -461,7 +463,7 @@ function DropdownPicker({
             role="listbox"
             aria-label={ariaLabel ?? placeholder}
             aria-multiselectable
-            className="menu-in z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            className="menu-in z-[260] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
             style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
           >
             <div className="sticky -top-1.5 z-10 -mx-1.5 -mt-1.5 mb-1 border-b border-border-light bg-white p-1.5">
@@ -531,6 +533,10 @@ function DropdownPicker({
                   onClick={() => {
                     onCreate(query.trim());
                     setQuery("");
+                    if (single) {
+                      setLevel(null);
+                      setOpen(false);
+                    }
                   }}
                   className="mb-0.5 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-semibold text-blue-primary transition-colors hover:bg-blue-light"
                 >
@@ -689,6 +695,26 @@ export function MultiPicker({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const inlineRef = useRef<HTMLDivElement>(null);
+  const inlineListId = useId();
+  useEffect(() => {
+    if (!open || variant !== "inline") return;
+    const away = (event: Event) => {
+      if (!inlineRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+    };
+    const stopOutside = listenForOutsideInteraction(away);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [open, variant]);
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
   const q = query.trim().toLowerCase();
   const matches = useMemo(
@@ -723,7 +749,7 @@ export function MultiPicker({
     );
 
   return (
-    <div className="rounded-lg border border-border-light bg-white p-2">
+    <div ref={inlineRef} className="rounded-lg border border-border-light bg-white p-2">
       {selected.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {selected.map((id) => {
@@ -761,8 +787,13 @@ export function MultiPicker({
           setQuery(e.target.value);
           setOpen(true);
         }}
+        role="combobox"
+        aria-label={ariaLabel ?? placeholder}
+        aria-expanded={open}
+        aria-autocomplete="list"
+        aria-controls={open ? inlineListId : undefined}
         onFocus={() => setOpen(true)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        onClick={() => setOpen(true)}
         /* The dropdown variant above already commits the top row on Enter;
            the inline one never did (Anir, Aug 22: "when I press enter it
            chooses the first option, any dropdown"). */
@@ -784,7 +815,7 @@ export function MultiPicker({
         className="h-[34px] w-full rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
       />
       {open && (
-        <div className="mt-1.5 max-h-[168px] overflow-y-auto rounded-lg border border-border-light">
+        <div id={inlineListId} role="listbox" aria-label={ariaLabel ?? placeholder} className="mt-1.5 max-h-[168px] overflow-y-auto rounded-lg border border-border-light">
           {options.length === 0 ? (
             <p className="px-2.5 py-2 text-[12px] text-text-tertiary">{emptyLabel}</p>
           ) : matches.length === 0 ? (

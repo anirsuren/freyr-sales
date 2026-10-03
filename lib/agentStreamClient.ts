@@ -13,6 +13,24 @@ export async function readAgentResponse(
   const decoder = new TextDecoder();
   let buffer = "";
   let preview = "";
+  let lastPreview = "";
+  let nextPreview = "";
+  let paintTimer: ReturnType<typeof setTimeout> | undefined;
+  const flushPreview = () => {
+    clearTimeout(paintTimer);
+    paintTimer = undefined;
+    if (nextPreview !== lastPreview) {
+      lastPreview = nextPreview;
+      onDelta(nextPreview);
+    }
+  };
+  // A token burst should not parse Markdown and rerender the whole chat for
+  // every token. Show the first text immediately, then paint at most 20Hz.
+  const queuePreview = (text: string) => {
+    nextPreview = text;
+    if (!lastPreview) flushPreview();
+    else if (!paintTimer) paintTimer = setTimeout(flushPreview, 50);
+  };
   let result: { reply: string; suggestions?: string[]; entityContext?: string[]; pendingAction?: unknown } | null = null;
   const consume = (line: string) => {
     if (!line.trim()) return;
@@ -25,11 +43,14 @@ export async function readAgentResponse(
       const unfinished = unfinishedTag >= 0 &&
         marker.startsWith(preview.slice(unfinishedTag));
       const visibleEnd = metadataStart >= 0 ? metadataStart : unfinished ? unfinishedTag : preview.length;
-      onDelta(preview.slice(0, visibleEnd));
+      queuePreview(preview.slice(0, visibleEnd));
     } else if (event.type === "reset") {
       // What streamed so far was preamble to a tool call, not the answer.
       // Clear it so the real answer starts on a clean line.
       preview = "";
+      clearTimeout(paintTimer);
+      paintTimer = undefined;
+      nextPreview = lastPreview = "";
       onDelta("");
     } else if (event.type === "done" && typeof event.reply === "string") {
       result = event;
@@ -51,6 +72,7 @@ export async function readAgentResponse(
     }
     if (buffer.trim()) consume(buffer);
   } finally {
+    flushPreview();
     reader.releaseLock();
   }
   if (!result) throw new Error("agent stream ended without an answer");

@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
+  ArrowUpRight,
   Banknote,
   CalendarClock,
   CalendarDays,
@@ -246,6 +247,8 @@ export function Customer360({
   bandEmpty = false,
   chromeless = false,
   unboxed = false,
+  inlineTabLink = false,
+  tableKeys = [],
   forceKey,
   solutioningControls = false,
   formatAmount,
@@ -316,6 +319,10 @@ export function Customer360({
   chromeless?: boolean;
   /** Keep this component's tabs, but let them sit directly on the page. */
   unboxed?: boolean;
+  /** Place the selected category destination beside its tab on teammate profiles. */
+  inlineTabLink?: boolean;
+  /** Use the full-width record table for these tabs while preserving the tab strip. */
+  tableKeys?: string[];
   /** The page is driving which band shows. */
   forceKey?: string;
   /** The opportunity page narrows its linked requests without leaving it. */
@@ -336,6 +343,27 @@ export function Customer360({
    * row's facts sitting BESIDE its words.
    */
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const urlTab = useSyncExternalStore(
+    (notify) => {
+      window.addEventListener("popstate", notify);
+      window.addEventListener("person-tab-change", notify);
+      return () => {
+        window.removeEventListener("popstate", notify);
+        window.removeEventListener("person-tab-change", notify);
+      };
+    },
+    () => inlineTabLink ? new URLSearchParams(window.location.search).get("tab") : null,
+    () => null
+  );
+  const selectTab = (key: string) => {
+    if (inlineTabLink) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", key);
+      window.history.pushState(null, "", url);
+      window.dispatchEvent(new Event("person-tab-change"));
+    } else setActiveKey(key);
+  };
+
   /** Which goal row is folded open — same row-click grammar as the goals
       page: the name is the link, every other pixel toggles the fold. */
   const [openGoal, setOpenGoal] = useState<string | null>(null);
@@ -369,7 +397,7 @@ export function Customer360({
   const ordered = bands;
   const active =
     (forceKey ? ordered.find((b) => b.key === forceKey) : null) ??
-    ordered.find((b) => b.key === activeKey) ??
+    ordered.find((b) => b.key === (inlineTabLink ? urlTab : activeKey)) ??
     live[0] ??
     (ordered.length ? ordered[0] : null);
   /* Which columns this band actually fills in. */
@@ -469,11 +497,11 @@ export function Customer360({
               const Icon = BAND_ICON_MAP[b.icon] ?? Target;
               const isActive = b.key === active.key;
               return (
+                <div key={b.key} className="flex shrink-0 items-center gap-1">
                 <button
-                  key={b.key}
                   type="button"
                   role="tab"
-                  onClick={() => setActiveKey(b.key)}
+                  onClick={() => selectTab(b.key)}
                   aria-selected={isActive}
                   className={cn(
                     "-mb-px flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap border-b-2 pb-3 text-[14px] transition-colors",
@@ -500,6 +528,12 @@ export function Customer360({
                     </span>
                   )}
                 </button>
+                {inlineTabLink && isActive && b.href && (
+                  <Link href={b.href} aria-label={`Open ${b.label.toLowerCase()}`} title={`Open ${b.label.toLowerCase()}`} className="mb-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-blue-primary hover:bg-blue-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary">
+                    <ArrowUpRight size={16} aria-hidden />
+                  </Link>
+                )}
+                </div>
               );
             })}
             {/* THE WAY IN, AT THE END OF THE STRIP (Anir, Aug 28: "'all
@@ -513,7 +547,7 @@ export function Customer360({
           </div>
             <span className="-mb-px flex shrink-0 items-center gap-3 whitespace-nowrap border-b-2 border-transparent pb-2">
               {bandActions?.[active.key]}
-              {active.href && (
+              {!inlineTabLink && active.href && (
                 <Link
                   href={active.href}
                   className="text-[12.5px] font-semibold text-blue-primary hover:underline"
@@ -873,7 +907,7 @@ export function Customer360({
               <p className="py-8 text-center text-[12.5px] text-text-secondary">
                 No solutioning requests match this search or request type.
               </p>
-            ) : chromeless ? (
+            ) : chromeless || tableKeys.includes(active.key) ? (
               /* A REAL TABLE, ONE ROW PER RECORD (Suren, Aug 28: "he wants it
                  in probably one row, like a table format, for everything, and
                  you have to make it look at the goals — look how full those

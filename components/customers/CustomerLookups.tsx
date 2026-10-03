@@ -12,6 +12,7 @@ import {
   type CompanySuggestion,
   type LookupSource,
 } from "@/lib/placeLookupShared";
+import { findCountry } from "@/lib/countries";
 import { tint } from "@/lib/tint";
 
 /**
@@ -300,4 +301,36 @@ export function AddressLineLookup({
       emptyText="No address found. Type it in yourself."
     />
   );
+}
+
+/** Search real cities worldwide; picking one also reconciles the country. */
+export function CityLookup({ value, country = "", onChange, onPick, inputClassName, ariaLabel = "City", disabled = false }: {
+  value: string; country?: string; onChange: (value: string) => void;
+  onPick: (city: string, country: string) => void;
+  inputClassName: string; ariaLabel?: string; disabled?: boolean;
+}) {
+  const session = useRef(newLookupSession());
+  const offered = useRef(new Map<string, AddressSuggestion>());
+  const load = async (query: string, signal: AbortSignal): Promise<LookupAnswer> => {
+    const response = await fetch(`/api/lookup/cities?q=${encodeURIComponent(query)}&country=${findCountry(country)?.iso2 ?? ""}&session=${session.current}`, { signal });
+    const data = await readJson(response);
+    if (!response.ok) throw new Error("City search is unavailable.");
+    const results = (data.results ?? []) as AddressSuggestion[];
+    offered.current.clear();
+    results.forEach(result => offered.current.set(result.ref, result));
+    return { groups: [{ options: results.map(result => ({ key: result.ref, main: result.main, detail: result.detail, icon: <MapPin size={16} /> })) }], footer: <LookupCredit source={sourceOf(data)} kind="address" /> };
+  };
+  const pick = async (option: LookupOption) => {
+    try {
+      let address = offered.current.get(option.key)?.address;
+      if (!address) {
+        const response = await fetch(`/api/lookup/addresses/details?ref=${encodeURIComponent(option.key)}&session=${session.current}`);
+        const data = await readJson(response);
+        if (!response.ok || !data.address) return;
+        address = data.address as CustomerAddress;
+      }
+      onPick(address.city || option.main, address.country);
+    } catch { /* Keep the typed city when details are temporarily unavailable. */ } finally { session.current = newLookupSession(); }
+  };
+  return <LookupField key={country} disabled={disabled} value={value} onChange={onChange} onPick={option => void pick(option)} load={load} ariaLabel={ariaLabel} inputClassName={inputClassName} placeholder="Search cities…" emptyText="No matching cities found." />;
 }

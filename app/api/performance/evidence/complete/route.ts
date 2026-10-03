@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { docsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { EVIDENCE_NAMESPACE } from "@/lib/performanceEvidence";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export const dynamic = "force-dynamic";
  * step; the bytes never touch this server on either call.
  */
 export async function POST(req: Request) {
+  const refusal = await moduleWriteRefusal("/performance");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor) {
     return NextResponse.json({ error: "Sign in to attach files" }, { status: 403 });

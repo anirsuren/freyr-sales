@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { getMaterialServeUrl } from "@/lib/materialStorage";
-import { getOffering } from "@/lib/offerings";
+import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
+import { canViewOfferingMaterial } from "@/lib/materialAccess";
 import {
   loadMaterialText,
   saveMaterialText,
   type MaterialTextEntry,
 } from "@/lib/materialText";
-import { docsStorage } from "@/lib/docsStorage";
 import { isReadableFile } from "@/lib/fileText";
 import { indexStoredMaterialInBackground } from "@/lib/materialIndexing";
 
@@ -36,17 +37,26 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
   const { id } = await params;
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor)
     return NextResponse.json({ error: "Sign in first" }, { status: 403 });
+  await initializeLiveOfferings();
   const offering = getOffering(id);
   if (!offering)
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = ((await req.json().catch(() => ({}))) ?? {}) as { paths?: unknown };
   const paths = Array.isArray(body.paths)
-    ? body.paths.map(String).filter((p) => p.startsWith(`${id}/`)).slice(0, 200)
+    ? body.paths.map(String).filter((path) =>
+        offering.materials.some((material) =>
+          material.docsPath === path &&
+          canViewOfferingMaterial(offering, material, actor.userId, actor.role === "admin")
+        )
+      ).slice(0, 200)
     : [];
   if (!paths.length) return NextResponse.json({ status: {} });
 

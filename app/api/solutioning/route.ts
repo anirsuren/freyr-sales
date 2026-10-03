@@ -547,6 +547,9 @@ export async function POST(req: NextRequest) {
           doc.addedBy.trim().toLowerCase() === me.name.trim().toLowerCase(),
       });
     } else if (op === "update") {
+      if (target.status === "cancelled") {
+        return NextResponse.json({ error: "Cancelled records cannot be edited." }, { status: 403 });
+      }
       if (!admin && (target.type ?? "request") === "request" &&
           !held.some(role => role === "bd_owner" || role === "bd_member") &&
           me.role !== "bd_owner" && me.role !== "bd_member") {
@@ -561,7 +564,10 @@ export async function POST(req: NextRequest) {
       await updateRequest({ requestId, by: me.name, patch: body.patch ?? {} });
     } else if (op === "delete") {
       /* "The person who can create only can delete." */
-      const refusal = await moduleDeleteRefusal("/solutioning");
+      const deletePath = target.type === "submission" || target.type === "presentation"
+        ? `/solutioning?tab=${target.type}s`
+        : "/solutioning";
+      const refusal = await moduleDeleteRefusal(deletePath);
       if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
       await deleteRequest({
         requestId,

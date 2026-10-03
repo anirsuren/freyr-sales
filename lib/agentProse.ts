@@ -70,6 +70,8 @@ function pageLabel(path: string): string {
  * path outside the app's sections ("and/or", "24/7") is never touched.
  */
 export function linkBarePaths(text: string): string {
+  // Repair only known app sections; real protocol-relative external URLs stay intact.
+  text = text.replace(/(\]\()\/\/([a-z-]+)(?=[/?#])([^\s)]*)/gi, (match, prefix, section, rest) => APP_SECTIONS.has(section.toLowerCase()) ? `${prefix}/${section}${rest}` : match);
   const pattern = new RegExp(String.raw`\x60(${APP_PATH})\x60|(?<=^|[\s(])(${APP_PATH})(?=[\s).,;:!?]|$)`, "gm");
   return text
     .split(KEEP_AS_IS)

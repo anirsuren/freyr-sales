@@ -205,7 +205,8 @@ export function Sidebar({
        nothing in the sidebar lit and the four sub-items vanish. */
     const active =
       isActive(pathname, item.href) ||
-      (item.href === "/solutioning" && isActive(pathname, "/meetings"));
+      (item.href === "/solutioning" && isActive(pathname, "/meetings")) ||
+      (item.href === "/team" && pathname.startsWith("/analytics/reps/"));
     const Icon = item.icon;
     const badge = item.href === "/agent" && inboxCount > 0 ? inboxCount : 0;
     return (

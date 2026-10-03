@@ -1,3 +1,4 @@
+import { canEditRecord, resolveScope } from "@/lib/recordScope";
 import { ContractsModule } from "@/components/contracts/ContractsModule";
 import { getDb } from "@/lib/db";
 import { readContracts } from "@/lib/contracts";
@@ -63,9 +64,15 @@ export default async function ContractsPage() {
       ].sort((a, b) => a.localeCompare(b))
     : ["Elena Rossi", "Omar Haddad", "Nina Kowalski", "Marcus Chen"];
 
+  const recordScope = await resolveScope();
+  const editableContractIds = state.contracts
+    .filter((c) => canEditRecord({ id: c.id, owner: c.owner, created_by: c.createdBy }, "contracts", recordScope))
+    .map((c) => c.id);
+
   return (
     <ContractsModule
       state={state}
+      editableContractIds={editableContractIds}
       /* THE TABLE DECIDES, NOT A HARDCODED ROLE (found in the loop, Sep 1).
          `me.role === "admin"` ignores the privilege table, so this module
          could be granted to somebody in the Admin grid and granting it changed

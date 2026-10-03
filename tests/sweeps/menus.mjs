@@ -1,8 +1,8 @@
-/* READ-ONLY SWEEP: every floating menu closes on Escape.
+/* READ-ONLY SWEEP: every floating menu closes on Escape and an outside click.
  *
- * Click-away was always built; Escape was the half that kept getting
- * forgotten, because each menu is hand-rolled (Anir has raised the dropdown
- * behaviour more than once). This walks the pages and presses Escape.
+ * Both dismissal paths need a regression check: the same hand-rolled menus
+ * appear on pages and inside dialogs, and a menu left open blocks the next
+ * control. This walks representative pages without changing any records.
  *
  * Two things it deliberately does NOT flag, learned by getting them wrong:
  *
@@ -63,11 +63,23 @@ for (const route of PAGES) {
       if ((await m.getAttribute("aria-expanded").catch(() => null)) === "true")
         stuck.push(`${route}: "${label}" survives two Escapes`);
     }
+
+    // Reopen a dismissed menu, then click the inert corner of the viewport.
+    // This also exercises menus portalled out of a form or dialog.
+    if ((await m.getAttribute("aria-expanded").catch(() => null)) === "false") {
+      await m.click({ timeout: 5000 }).catch(() => {});
+      if ((await m.getAttribute("aria-expanded").catch(() => null)) === "true") {
+        await page.mouse.click(8, 8);
+        await page.waitForTimeout(300);
+        if ((await m.getAttribute("aria-expanded").catch(() => null)) === "true")
+          stuck.push(`${route}: "${label}" survives an outside click`);
+      }
+    }
   }
   console.log(`${route.padEnd(18)} swept`);
 }
 
 await browser.close();
 console.log(`\n${checked} overlay menus checked`);
-console.log(stuck.length ? "--- STUCK ---\n" + stuck.join("\n") : "every one closes on Escape");
+console.log(stuck.length ? "--- STUCK ---\n" + stuck.join("\n") : "every one closes on Escape and outside click");
 process.exit(stuck.length ? 1 : 0);

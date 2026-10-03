@@ -316,8 +316,10 @@ function replaceEngagementVersions(
 export function CustomerOfferingHeatMap({
   initialCustomers,
   offerings,
+  editableCustomerIds,
 }: {
   initialCustomers: Customer[];
+  editableCustomerIds: string[];
   offerings: HeatMapOffering[];
 }) {
   const { toast } = useToast();
@@ -466,6 +468,7 @@ export function CustomerOfferingHeatMap({
   const [reportSelectionError, setReportSelectionError] = useState(false);
   const draftSaveChainRef = useRef<Promise<boolean>>(Promise.resolve(true));
 
+  const mayEditSelected = !!selected && editableCustomerIds.includes(selected.customerId);
   const selectedCustomer = selected
     ? customers.find((customer) => customer.id === selected.customerId) || null
     : null;
@@ -504,7 +507,7 @@ export function CustomerOfferingHeatMap({
   }, [draft, editingExisting]);
 
   useEffect(() => {
-    if (!selected || !pendingVersionDraft || editingExisting || saving) return;
+    if (!mayEditSelected || !selected || !pendingVersionDraft || editingExisting || saving) return;
     const timeout = window.setTimeout(() => {
       void queueActivityDraftSave(
         selected.customerId,
@@ -518,7 +521,7 @@ export function CustomerOfferingHeatMap({
     // function would restart the debounce on every render; the save chain lives
     // in a stable ref and serializes the writes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingExisting, pendingVersionDraft, saving, selected]);
+  }, [editingExisting, pendingVersionDraft, saving, selected, mayEditSelected]);
 
   const searchFiltered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -841,6 +844,7 @@ export function CustomerOfferingHeatMap({
   }
 
   function createNewVersion() {
+    if (!mayEditSelected) return;
     if (!selectedCustomer || !selectedOffering) return;
     if (pendingVersionDraft) {
       setDraft({ ...pendingVersionDraft });
@@ -932,6 +936,7 @@ export function CustomerOfferingHeatMap({
   }
 
   async function chooseHeatMapActivity(versionId: string) {
+    if (!mayEditSelected) return;
     const source =
       pendingVersionDraft?.id === versionId
         ? pendingVersionDraft
@@ -1085,6 +1090,7 @@ export function CustomerOfferingHeatMap({
   }
 
   async function saveDraft() {
+    if (!mayEditSelected) return;
     if (!draft || !selectedCustomer || !selectedOffering) return;
     if (!reportVersionId) {
       setReportSelectionError(true);
@@ -1124,6 +1130,7 @@ export function CustomerOfferingHeatMap({
    *  simply discarded. Deleting the report row promotes the newest survivor,
    *  because the heat map always reads exactly one. */
   async function deleteVersion(versionId: string) {
+    if (!mayEditSelected) return;
     setConfirmUnlink(null);
     if (versionId === pendingVersionDraft?.id) {
       cancelExpandedVersion();
@@ -1188,9 +1195,9 @@ export function CustomerOfferingHeatMap({
                 heat map shows None. Add the first activity to put it on the
                 map.
               </p>
-              <Button onClick={createNewVersion} className="mt-1.5">
+              {mayEditSelected && <Button onClick={createNewVersion} className="mt-1.5">
                 <Plus size={14} strokeWidth={2.2} /> Add the first activity
-              </Button>
+              </Button>}
             </div>
           </div>
         )}
@@ -1213,7 +1220,7 @@ export function CustomerOfferingHeatMap({
                   </p>
                 </div>
               </div>
-              {selectedHistory.length > 0 && !draftIsNew && (
+              {mayEditSelected && selectedHistory.length > 0 && !draftIsNew && (
                 <Button
                   onClick={createNewVersion}
                   disabled={editingExisting && hasDraftChanges}
@@ -1283,9 +1290,9 @@ export function CustomerOfferingHeatMap({
                     the heat map shows None. Add the first activity to put it
                     on the map.
                   </p>
-                  <Button onClick={createNewVersion} className="mt-1">
+                  {mayEditSelected && <Button onClick={createNewVersion} className="mt-1">
                     <Plus size={14} strokeWidth={2.2} /> Add the first activity
-                  </Button>
+                  </Button>}
                 </div>
               )}
               {versionRows.map((version) => {
@@ -1379,7 +1386,7 @@ export function CustomerOfferingHeatMap({
                         type="button"
                         role="checkbox"
                         aria-checked={reported}
-                        disabled={saving}
+                        disabled={saving || !mayEditSelected}
                         aria-label={`${reported ? "Reported" : "Report"} in the heat map: ${versionMeta.label}`}
                         title={
                           reported
@@ -1478,7 +1485,7 @@ export function CustomerOfferingHeatMap({
                           {dateSummary}
                         </span>
                       </button>
-                      {confirmUnlink === version.id ? (
+                      {mayEditSelected && (confirmUnlink === version.id ? (
                           /* THE QUESTION NAMES THE CUSTOMER, THE OFFERING AND
                              THE ACTIVITY (Anir, Oct 1: "u have to say what
                              customer what offering so there is absolutely no
@@ -1538,7 +1545,7 @@ export function CustomerOfferingHeatMap({
                           >
                             <Trash2 size={14} strokeWidth={2} />
                           </button>
-                      )}
+                      ))}
                       <button
                         type="button"
                         aria-expanded={expanded}
@@ -1558,7 +1565,7 @@ export function CustomerOfferingHeatMap({
                       {/* Switching the report row saves at once and changes
                           this cell for everyone, so it asks here first and
                           names both activities. Blue: nothing is deleted. */}
-                      {confirmReport === version.id && (
+                      {mayEditSelected && confirmReport === version.id && (
                         <span className="order-last flex basis-full flex-wrap items-center gap-2 rounded-lg border border-blue-subtle bg-blue-light/50 px-2.5 py-2">
                           <span className="min-w-0 flex-1 text-[12px] leading-snug text-text-primary">
                             Show the <b>{versionMeta.label}</b>
@@ -1607,7 +1614,7 @@ export function CustomerOfferingHeatMap({
                          table, so it read as a second, unrelated panel. Now it
                          is indented, tinted, and hangs off a blue rule that
                          runs down from the row it belongs to. */
-                      <div className="tab-panel mx-3 mb-3 space-y-4 rounded-lg border border-border-light bg-white p-4">
+                      <fieldset disabled={!mayEditSelected} className="tab-panel mx-3 mb-3 min-w-0 space-y-4 rounded-lg border border-border-light bg-white p-4">
             <FormSectionHeading
               title={draftIsNew ? "New activity details" : "Activity details"}
             />
@@ -1865,7 +1872,7 @@ export function CustomerOfferingHeatMap({
               ))}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-border-light pt-4">
+            {mayEditSelected && <div className="flex justify-end gap-2 border-t border-border-light pt-4">
                 {editingExisting && hasDraftChanges && (
                   <Button variant="secondary" onClick={cancelExpandedVersion}>
                     Cancel changes
@@ -1879,8 +1886,8 @@ export function CustomerOfferingHeatMap({
                   <Link2 size={14} strokeWidth={2.2} />
                   {draftIsNew ? "Save activity" : "Save changes"}
                 </Button>
-            </div>
-                      </div>
+            </div>}
+                      </fieldset>
                     )}
                   </section>
                 );

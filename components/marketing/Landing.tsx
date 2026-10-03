@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, motion, useInView, useReducedMotion } from "motion/react";
 import { CountUp, Reveal, ease, reveal } from "./Motion";
-import { ArrowDown, ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Moon, Pause, Play, Plus, Sparkles, Sun, Target, UsersRound, X } from "lucide-react";
+import { ArrowRight, BookOpenText, BriefcaseBusiness, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDot, FileText, Globe2, Layers, Link2, LockKeyhole, Menu, Moon, Pause, Play, Plus, Sparkles, Sun, Target, UsersRound, X } from "lucide-react";
 import mark from "@/public/freyr-mark.png";
 import hero from "@/public/landing/heroes/13-roman-freyr-hero.png";
 import heroDark from "@/public/landing/heroes/13-roman-freyr-hero-dark.jpg";
@@ -177,7 +177,7 @@ function Footer({entry,entryLabel}:{entry:string;entryLabel:string}) {
       <motion.div {...reveal} transition={{duration:.65,ease}}><Brand/><p>Customer relationships, opportunities, knowledge and market context. Connected for Freyr teams.</p></motion.div>
       {columns.map(([title,links],i)=><motion.div key={title} {...reveal} transition={{duration:.65,delay:.09*(i+1),ease}}><h3>{title}</h3><ul>{links.map(([label,href])=><li key={label}><Link href={href}>{label}</Link></li>)}</ul></motion.div>)}
     </div>
-    <motion.div className={s.footerBottom} {...reveal} transition={{duration:.55,delay:.25,ease}}><div className={s.container}><span>© {new Date().getFullYear()} Freyr Sales Intelligence</span><span>Built for Freyr teams</span></div></motion.div>
+    <motion.div className={s.footerBottom} {...reveal} transition={{duration:.55,delay:.25,ease}}><div className={s.container}><span>© {new Date().getFullYear()} Freyr Sales Intelligence</span><a href="https://auctal.com" target="_blank" rel="noopener noreferrer">Powered by Auctal</a></div></motion.div>
   </footer>;
 }
 
@@ -211,7 +211,7 @@ export function Landing({entry,signedIn,heroImage}:{entry:string;signedIn:boolea
      <motion.h1 initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.15}} id="hero-title">Every account, a <em>clearer</em> next move.</motion.h1>
      <motion.p initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.24}}>Freyr brings your customers, opportunities, knowledge and market context together. Ask Freyr AI what matters, then follow the answer back to the work.</motion.p>
      <motion.ul initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.33}}><li><UsersRound size={16}/>People and deals, connected</li><li><Globe2 size={16}/>Customer and market context</li><li><Sparkles size={16}/>Answers from your workspace</li></motion.ul>
-     <motion.div initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.42}} className={s.heroActions}><Link href={entry} className={s.button}>{signedIn?"Open workspace":"Get started with Freyr"}<ArrowRight size={17}/></Link><p>Built for Freyr teams. <a href="#product">See what Freyr can do <ArrowDown size={12}/></a></p></motion.div>
+     <motion.div initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.8,ease,delay:.42}} className={s.heroActions}><Link href={entry} className={s.button}>{signedIn?"Open workspace":"Get started with Freyr"}<ArrowRight size={17}/></Link><p><a href="https://auctal.com" target="_blank" rel="noopener noreferrer">Powered by Auctal</a></p></motion.div>
    </div></div>
  </section>
  <section className={s.standards}><Reveal className={s.container}><h2>One workspace for the full sales picture</h2><ul>{AREAS.map(([name,note])=><li key={name}><strong>{name}</strong><span>{note}</span></li>)}</ul></Reveal></section>

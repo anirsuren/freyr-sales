@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifiedRequestMemberScope } from "@/lib/memberScope";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getDataMode } from "@/lib/dataMode";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
 import {
   addCompetitionMaterial,
   addCompetitorProduct,
@@ -17,6 +18,8 @@ export const dynamic = "force-dynamic";
 // in reads and contributes. Mock mode shows samples and never accepts writes.
 
 export async function GET(req: NextRequest) {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -53,6 +56,8 @@ async function acquireCompetitionWrite(): Promise<() => void> {
 }
 
 export async function POST(req: NextRequest) {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const scope = await verifiedRequestMemberScope(req);
   if (!scope) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });

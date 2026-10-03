@@ -3,6 +3,7 @@ import { getFdlComponent } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { uploadMaterialFile, MAX_UPLOAD_BYTES } from "@/lib/materialStorage";
 import { getCurrentUser } from "@/lib/currentUser";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -27,6 +28,8 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleWriteRefusal("/components");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const { id } = await params;
   if (!getFdlComponent(id))
     return NextResponse.json({ error: "Not found" }, { status: 404 });

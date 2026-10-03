@@ -111,11 +111,17 @@ export function OfferingCompetition({
   // click elsewhere without that click also activating what's under it.
   useEffect(() => {
     if (!viewOpen) return;
-    const close = (e: PointerEvent) => {
+    const close = (e: Event) => {
       if (!viewRef.current?.contains(e.target as Node)) setViewOpen(false);
     };
     document.addEventListener("pointerdown", close, true);
-    return () => document.removeEventListener("pointerdown", close, true);
+    document.addEventListener("click", close, true);
+    document.addEventListener("focusin", close, true);
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      document.removeEventListener("click", close, true);
+      document.removeEventListener("focusin", close, true);
+    };
   }, [viewOpen]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);

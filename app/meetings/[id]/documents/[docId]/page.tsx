@@ -20,6 +20,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string; docId: string }>;
 }) {
+  await requireModuleAccess("/meetings");
   const { id, docId } = await params;
   const state = await readMeetings().catch(() => null);
   const meeting = state?.meetings.find((m) => m.id === id);

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { StandaloneEvidenceDoc } from "@/components/performance/StandaloneEvidenceDoc";
 import { EVIDENCE_NAMESPACE } from "@/lib/performanceEvidence";
 import { SAMPLE_DOCUMENT_FILES } from "@/lib/sampleDocuments";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<{ name?: string }>;
 }) {
+  await requireModuleAccess("/performance");
   const { name } = await searchParams;
   return { title: name || "Supporting evidence" };
 }
@@ -19,6 +21,7 @@ export default async function PerformanceEvidencePage({
 }: {
   searchParams: Promise<{ name?: string; source?: string; embed?: string }>;
 }) {
+  await requireModuleAccess("/performance");
   const { name, source, embed } = await searchParams;
   if (!name || !source) redirect("/performance/people");
 

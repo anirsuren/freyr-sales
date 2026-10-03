@@ -82,6 +82,7 @@ export function Modal({
   useEffect(() => setMounted(true), []);
 
   const dialogRef = useRef<HTMLDivElement>(null);
+  const backdropPress = useRef(false);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Whatever opened the dialog gets the focus back when it closes, so a
@@ -107,16 +108,25 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (stacked) e.stopImmediatePropagation();
+      // Only the front dialog owns keyboard dismissal. Handle it in the
+      // bubble phase so an open picker can consume Escape first, including
+      // in stacked dialogs. Capture used to close the form before its
+      // calendar/listbox ever received the key.
+      const node = dialogRef.current;
+      const dialogs = Array.from(document.querySelectorAll<HTMLElement>("[data-freyr-modal-layer]"));
+      const front = dialogs.reduce<HTMLElement | null>((top, candidate) =>
+        !top || Number(candidate.dataset.freyrModalLayer) >= Number(top.dataset.freyrModalLayer)
+          ? candidate : top, null);
+      if (!node || front !== node) return;
       if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         onClose();
         return;
       }
       if (e.key !== "Tab") return;
       // Trap: Tab cycles within the dialog instead of wandering into the page
       // behind the backdrop.
-      const node = dialogRef.current;
-      if (!node) return;
       const items = Array.from(
         node.querySelectorAll<HTMLElement>(FOCUSABLE)
       ).filter(
@@ -139,8 +149,8 @@ export function Modal({
         (e.shiftKey ? last : first).focus();
       }
     };
-    window.addEventListener("keydown", onKey, stacked);
-    return () => window.removeEventListener("keydown", onKey, stacked);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, stacked]);
 
   if (!open || !mounted) return null;
@@ -179,13 +189,22 @@ export function Modal({
        * at once (Anir, Aug 13: "why are there two dropdowns lol. this should
        * never be possible"). Do not add those handlers back.
        */
+      onPointerDownCapture={(e) => {
+        // A picker can collapse and recenter this dialog between press and
+        // release. That gesture began inside the form, not on the backdrop.
+        // Observe without stopping propagation: picker click-away needs it.
+        backdropPress.current = e.target === e.currentTarget;
+      }}
+      onPointerCancel={() => { backdropPress.current = false; }}
       onClick={(e) => {
         e.stopPropagation();
-        onClose();
+        if (e.target === e.currentTarget && backdropPress.current) onClose();
+        backdropPress.current = false;
       }}
     >
       <div
         ref={dialogRef}
+        data-freyr-modal-layer={dock ? 230 : stacked ? 105 : 95}
         role="dialog"
         aria-modal="true"
         aria-label={title}

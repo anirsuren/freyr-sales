@@ -207,7 +207,7 @@ export function PersonSelect({
       width: rect.width,
       top: below ? rect.bottom + 6 : undefined,
       bottom: below ? undefined : window.innerHeight - rect.top + 6,
-      zIndex: 200,
+      zIndex: 260,
     });
   };
 
@@ -219,16 +219,22 @@ export function PersonSelect({
       if (!ref.current?.contains(target) && !menuRef.current?.contains(target))
         setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setOpen(false);
+      ref.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    };
     const onScroll = () => anchorMenu();
     const onResize = () => setOpen(false);
     document.addEventListener("pointerdown", onDoc, true);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onResize);
     return () => {
       document.removeEventListener("pointerdown", onDoc, true);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
       window.removeEventListener("resize", onResize);
     };
@@ -904,7 +910,11 @@ export function PaceTimeline({
   expectedDueLabel,
   onSetSchedule,
   interactive = false,
+  lit = false,
+  onLinkHover,
 }: {
+  lit?: boolean;
+  onLinkHover?: (on: boolean) => void;
   title: React.ReactNode;
   verified: number;
   awaiting: number;
@@ -1125,7 +1135,7 @@ export function PaceTimeline({
   );
 
   return (
-    <div className={compact ? "w-full" : "min-w-[380px]"}>
+    <div onMouseEnter={() => onLinkHover?.(true)} onMouseLeave={() => onLinkHover?.(false)} className={cn("bar-hoverable", compact ? "w-full" : "min-w-[380px]")}>
       {!compact && (
         <p className="text-[13px] font-semibold text-text-primary">{title}</p>
       )}
@@ -1315,24 +1325,26 @@ export function PaceTimeline({
                     "I like the idea that verified is green, but then make it
                     consistent"). */}
                 <span
-                  className="block h-full shrink-0"
-                  style={{ width: `${vPct}%`, background: ENTRY_COLOR.verified }}
+                  className={cn("bar-fill block h-full shrink-0", lit && "bar-lit")}
+                  style={{ width: `${vPct}%`, background: ENTRY_COLOR.verified, ["--bar-glow" as string]: ENTRY_COLOR.verified }}
                 />
                 {sentBackValue > 0 && (
                   <span
-                    className="unverified-fill block h-full shrink-0"
+                    className={cn("bar-fill unverified-fill block h-full shrink-0", lit && "bar-lit")}
                     style={{
                       width: `${sentBackPct}%`,
                       ["--fill" as string]: GOAL_PROGRESS_COLOR.sent_back,
+                      ["--bar-glow" as string]: GOAL_PROGRESS_COLOR.sent_back,
                     }}
                   />
                 )}
                 {pendingValue > 0 && (
                   <span
-                    className="unverified-fill block h-full shrink-0"
+                    className={cn("bar-fill unverified-fill block h-full shrink-0", lit && "bar-lit")}
                     style={{
                       width: `${pendingPct}%`,
                       ["--fill" as string]: GOAL_PROGRESS_COLOR.reported,
+                      ["--bar-glow" as string]: GOAL_PROGRESS_COLOR.reported,
                     }}
                   />
                 )}

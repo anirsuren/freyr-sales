@@ -17,12 +17,12 @@ const offering = {
   offering_name: "Example Offering",
   owners: [],
   materials: [
-    { id: "public", label: "Public guide", accessLevel: "sales" },
-    { id: "private", label: "Private file", accessLevel: "agent-only" },
+    { id: "public", label: "Public guide", accessLevel: "sales", docsPath: "guide.pdf", bytes: 2097152 },
+    { id: "private", label: "Private file", accessLevel: "agent-only", description: "Hidden details" },
   ],
 };
 const mocks = {
-  "@/lib/marketIntelFeed": {readMarketIntelFeed: source("marketFeed", {companies:{gsk:{author:{logoUrl:"https://example.com/logo.png"}}}})},
+  "@/lib/marketIntelFeed": {readMarketIntelFeed: source("marketFeed", {companies:{gsk:{author:{logoUrl:"https://example.com/logo.png"},news:[{title:"Buyer news",url:"https://example.com/news",source:"News source",published:"2026-10-01"}]}}})},
   "@/lib/memberScope": {
     verifiedRequestMemberScope: async () =>
       signedIn ? { workspaceId: "fixture", userId: "rep" } : null,
@@ -32,6 +32,7 @@ const mocks = {
   },
   "@/lib/moduleAccessServer": {
     canOpenModule: async (path) => allowed.has(path),
+    canOpenModules: async (paths) => new Map(paths.map(path => [path, allowed.has(path)])),
   },
   "@/lib/db": {
     getDb: () => ({
@@ -121,6 +122,8 @@ test("rep index never reads denied modules and excludes private material names",
     "reports",
   ])
     assert.deepEqual(data[kind], [], kind);
+  assert.deepEqual(data.materials[0].details, ["PDF", "2.0 MB"]);
+  assert.ok(!JSON.stringify(data).includes("Hidden details"));
   assert.equal(response.headers.get("cache-control"), "private, no-store");
 });
 test("admin receives allowed market/solution detail identities and private files", async () => {
@@ -129,10 +132,11 @@ test("admin receives allowed market/solution detail identities and private files
   const data = await (await GET({})).json();
   assert.equal(data.materials.length, 2);
   assert.deepEqual(data.marketCompanies, [
-    { id: "gsk", name: "GSK", logoUrl: "https://example.com/logo.png" },
+    { id: "gsk", name: "GSK", logoUrl: "https://example.com/logo.png", subtitle: "", details: ["Customer"], subtitleFacts:[],facts:[{kind:"type",text:"Customer"}] },
   ]);
   assert.equal(data.solutioning[0].id, "s1");
-  assert.deepEqual(data.trackedPeople,[{name:"Example Person",id:"https://www.linkedin.com/in/example-person/",logoUrl:"/images/person.webp"}]);
+  assert.deepEqual(data.marketItems[0].subtitleFacts, [{kind:"company",text:"GSK",logoUrl:"https://example.com/logo.png"},{kind:"source",text:"News source"}]);
+  assert.deepEqual(data.trackedPeople,[{name:"Example Person",id:"https://www.linkedin.com/in/example-person/",logoUrl:"/images/person.webp",subtitle:"",details:[],subtitleFacts:[],facts:[]}]);
 });
 test("a module grant is respected independently of role", async () => {
   role = "bd_member";

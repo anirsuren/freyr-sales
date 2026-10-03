@@ -7,6 +7,7 @@ import {
   listOfferings,
 } from "@/lib/offerings";
 import { canManageOfferings, isAdmin } from "@/lib/role";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Customer types & markets" };
@@ -37,7 +38,7 @@ export default async function CustomerTypesPage() {
         markets={listMarkets()}
         typeCounts={typeCounts}
         marketCounts={marketCounts}
-        canEdit={await canManageOfferings()}
+        canEdit={!(await moduleWriteRefusal("/customers")) && (await canManageOfferings())}
         canManageLists={await isAdmin()}
       />
     </div>

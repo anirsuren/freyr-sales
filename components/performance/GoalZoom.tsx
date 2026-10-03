@@ -1069,9 +1069,10 @@ export function GoalZoom({
         )}
       >
         <div className="flex items-center gap-3">
-          <b className="shrink-0 whitespace-nowrap text-[14px] text-text-primary">
+          <b className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[14px] text-text-primary">
+            {soloPerson && <Avatar name={soloPerson} className="h-6 w-6 shrink-0" />}
             {soloPerson
-              ? `${soloPerson.split(" ")[0]}, period by period`
+              ? `${soloPerson}, period by period`
               : "Organization → group → person"}
           </b>
           {/* The subtitle went (Anir, Aug 15: "also remove this text"). The
@@ -1560,7 +1561,7 @@ export function GoalZoom({
               >
                 <div className={boxHead}>
                   <b className="text-[12px] text-text-primary">
-                    {soloPerson ? soloPerson.split(" ")[0] : "1 · Organization"}
+                    {soloPerson ? "Period breakdown" : "1 · Organization"}
                   </b>
                   <span className="ml-auto text-[10.5px] text-text-tertiary">
                     pick a period
@@ -1635,7 +1636,8 @@ export function GoalZoom({
                         onMouseEnter={() => !empty && onLinkHover?.(true)}
                         onMouseLeave={() => !empty && onLinkHover?.(false)}
                         className={cn(
-                          "flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-all",
+                          "goal-linked-row flex w-full cursor-pointer items-center gap-2.5 px-2.5 py-2 text-left transition-all",
+                          !empty && lit && "goal-row-lit",
                           shown ? "bg-[rgba(0,113,227,0.08)]" : "rounded-lg",
                           !shown && active
                             ? "bg-[rgba(0,113,227,0.08)] ring-1 ring-inset ring-blue-primary/40"
@@ -1704,6 +1706,8 @@ export function GoalZoom({
                         <div className="tab-panel border-t border-border-light bg-white px-2.5 py-2">
                           <div>
                             <PaceTimeline
+                              lit={lit}
+                              onLinkHover={onLinkHover}
                               compact
                               interactive
                               title={r.label}
@@ -1911,6 +1915,8 @@ export function GoalZoom({
                           suspended={fanGroup === r2.group.id}
                           content={
                             <PaceTimeline
+                              lit={lit}
+                              onLinkHover={onLinkHover}
                               title={`${r2.group.name} · ${row?.label ?? ""}`}
                               verified={r2.verified}
                               awaiting={r2.awaiting}
@@ -1931,7 +1937,8 @@ export function GoalZoom({
                           onMouseEnter={() => onLinkHover?.(true)}
                           onMouseLeave={() => onLinkHover?.(false)}
                           className={cn(
-                            "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
+                            "goal-linked-row flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
+                          lit && "goal-row-lit",
                             active
                               ? "bg-[rgba(0,113,227,0.08)]"
                               : "rounded-lg hover:bg-surface",
@@ -2018,6 +2025,8 @@ export function GoalZoom({
                                 when I draw the dropdown"). */}
                             <div>
                               <PaceTimeline
+                              lit={lit}
+                              onLinkHover={onLinkHover}
                                 compact
                                 interactive
                                 title={r2.group.name}
@@ -2418,7 +2427,8 @@ export function GoalZoom({
                         onMouseEnter={() => onLinkHover?.(true)}
                         onMouseLeave={() => onLinkHover?.(false)}
                         className={cn(
-                          "flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
+                          "goal-linked-row flex w-full cursor-pointer flex-col gap-1.5 px-2.5 py-2 text-left transition-all",
+                          lit && "goal-row-lit",
                           openPeople.has(p.name)
                             ? "bg-[rgba(0,113,227,0.08)]"
                             : "rounded-lg hover:bg-surface",

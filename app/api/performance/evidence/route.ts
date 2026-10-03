@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { docsStorage, hasDocsStorage } from "@/lib/docsStorage";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { EVIDENCE_NAMESPACE } from "@/lib/performanceEvidence";
+import { moduleReadRefusal, moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,8 @@ const NAMESPACE = EVIDENCE_NAMESPACE;
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function POST(req: Request) {
+  const refusal = await moduleWriteRefusal("/performance");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor) {
     return NextResponse.json({ error: "Sign in to attach files" }, { status: 403 });
@@ -90,6 +93,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  const refusal = await moduleReadRefusal("/performance");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor) {
     return NextResponse.json({ error: "Sign in to open this file" }, { status: 403 });

@@ -17,6 +17,19 @@ import {
   type ScopedRecord,
 } from "./recordScope";
 import { viewerAccessMap } from "./viewerAccess";
+import { cookies } from "next/headers";
+import { ACCESS_COOKIE, verifyAccessGrant } from "./accessControl";
+import { accessGrantMemberIsActive } from "./liveAccessGrant";
+
+/** Upload routes bypass middleware to preserve large request bodies. */
+async function liveSessionRefusal(): Promise<string | null> {
+  if (process.env.NODE_ENV !== "production" && !process.env.AUTH_MODE) return null;
+  const store = await cookies();
+  const grant = await verifyAccessGrant(store.get(ACCESS_COOKIE)?.value);
+  return grant && await accessGrantMemberIsActive(grant)
+    ? null
+    : "Your workspace access has changed. Sign in again.";
+}
 
 /**
  * THE DOOR, not the curtain. The sidebar hides modules a person may not open;
@@ -31,7 +44,28 @@ import { viewerAccessMap } from "./viewerAccess";
  */
 export async function requireModuleAccess(path: string): Promise<void> {
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
-  if (!canAccessModuleWith(path, user.role, access)) redirect("/offerings");
+  if (!canAccessModuleWith(path, user.role, access)) {
+    // The Solutioning role cannot open Offerings. Sending it there after a
+    // refusal both exposes an unguarded landing page and can redirect-loop
+    // once that page is correctly guarded.
+    const homes = user.role === "sol_member"
+      ? ["/solutioning", "/meetings", "/settings"]
+      : ["/offerings", "/solutioning", "/settings"];
+    const home = homes.find((candidate) =>
+      canAccessModuleWith(candidate, user.role, access)
+    ) ?? "/settings";
+    redirect(home === path ? "/settings" : home);
+  }
+}
+
+/** API equivalent of requireModuleAccess: respond with 403, never redirect. */
+export async function moduleReadRefusal(path: string): Promise<string | null> {
+  const sessionRefusal = await liveSessionRefusal();
+  if (sessionRefusal) return sessionRefusal;
+  const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
+  return canAccessModuleWith(path, user.role, access)
+    ? null
+    : "Not available on this account.";
 }
 
 /**
@@ -45,6 +79,8 @@ export async function requireModuleAccess(path: string): Promise<void> {
  * something a person can act on. Null means allowed.
  */
 export async function moduleWriteRefusal(path: string): Promise<string | null> {
+  const sessionRefusal = await liveSessionRefusal();
+  if (sessionRefusal) return sessionRefusal;
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
   if (!canAccessModuleWith(path, user.role, access))
     return "Not available on this account.";
@@ -61,6 +97,8 @@ export async function moduleWriteRefusal(path: string): Promise<string | null> {
  * separate question from moduleWriteRefusal and a separate answer.
  */
 export async function moduleCreateRefusal(path: string): Promise<string | null> {
+  const sessionRefusal = await liveSessionRefusal();
+  if (sessionRefusal) return sessionRefusal;
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
   if (!canAccessModuleWith(path, user.role, access))
     return "Not available on this account.";
@@ -79,6 +117,8 @@ export async function moduleCreateRefusal(path: string): Promise<string | null> 
  * it back, which is why it sits with whoever could have created it.
  */
 export async function moduleDeleteRefusal(path: string): Promise<string | null> {
+  const sessionRefusal = await liveSessionRefusal();
+  if (sessionRefusal) return sessionRefusal;
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
   if (!canAccessModuleWith(path, user.role, access))
     return "Not available on this account.";
@@ -163,4 +203,12 @@ export { canAccessModule };
 export async function canOpenModule(path: string): Promise<boolean> {
   const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
   return canAccessModuleWith(path, user.role, access);
+}
+
+/** Resolve one permission snapshot for a batch. Route handlers cannot rely on
+ * React's render cache to deduplicate one resolver call per module. Keep this
+ * local to the invocation so later requests still see permission changes. */
+export async function canOpenModules(paths: readonly string[]): Promise<Map<string, boolean>> {
+  const [user, access] = await Promise.all([getCurrentUser(), viewerAccessMap()]);
+  return new Map(paths.map(path => [path, canAccessModuleWith(path, user.role, access)]));
 }

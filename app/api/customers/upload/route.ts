@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { uploadMaterialFile } from "@/lib/materialStorage";
 import { getDb } from "@/lib/db";
-import { canOpenModule } from "@/lib/moduleAccessServer";
+import { recordWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,9 +17,6 @@ export const maxDuration = 60;
  * with the document on it. A failed save never leaves a half-made row.
  */
 export async function POST(req: NextRequest) {
-  if (!(await canOpenModule("/customers")))
-    return NextResponse.json({ error: "Not available on this account." }, { status: 403 });
-
   const customerId = new URL(req.url).searchParams.get("customerId") ?? "";
   if (!customerId)
     return NextResponse.json({ error: "Which account?" }, { status: 400 });
@@ -29,6 +26,14 @@ export async function POST(req: NextRequest) {
   const customer = await getDb().customers.get(customerId);
   if (!customer)
     return NextResponse.json({ error: "That account is gone." }, { status: 404 });
+
+  const refusal = await recordWriteRefusal("/customers", {
+    id: customer.id,
+    owner: customer.owner,
+    owner_user_id: customer.owner_user_id,
+    created_by: customer.created_by,
+  });
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");

@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
-import { getRole } from "@/lib/role";
 import { uploadMaterialFile } from "@/lib/materialStorage";
 import { readMeetings } from "@/lib/meetings";
-import { canOpenModule } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,8 +16,8 @@ export const maxDuration = 60;
  * document with `op: "add-doc"`. A failed save never leaves a half-made row.
  */
 export async function POST(req: NextRequest) {
-  if (!(await canOpenModule("/meetings")))
-    return NextResponse.json({ error: "Not available on this account." }, { status: 403 });
+  const refusal = await moduleWriteRefusal("/meetings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
 
   const meetingId = new URL(req.url).searchParams.get("meetingId") ?? "";
   if (!meetingId)

@@ -3,6 +3,7 @@ import { SmartBack } from "@/components/ui/BackButton";
 import { OfferingCategoriesManager } from "@/components/offerings/OfferingCategoriesManager";
 import { listOfferingCategories, listOfferings } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
 import { listAssignablePeople } from "@/lib/assignablePeople";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function OfferingCategoriesPage() {
       <OfferingCategoriesManager
         offeringCategories={offeringCategories}
         offeringCounts={offeringCounts}
-        canEdit={await canManageOfferings()}
+        canEdit={!(await moduleWriteRefusal("/offerings")) && (await canManageOfferings())}
         people={assignable.map((p) => p.name)}
         peopleRoles={Object.fromEntries(
           assignable.filter((p) => p.role).map((p) => [p.name, p.role as string])

@@ -60,16 +60,20 @@ export function OfferingActions({
   // Click-away + Escape close, same as every other popover in the app.
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: Event) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) close();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
     };
     document.addEventListener("pointerdown", onDoc, true);
+    document.addEventListener("click", onDoc, true);
+    document.addEventListener("focusin", onDoc, true);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("pointerdown", onDoc, true);
+      document.removeEventListener("click", onDoc, true);
+      document.removeEventListener("focusin", onDoc, true);
       document.removeEventListener("keydown", onKey);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

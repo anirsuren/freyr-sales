@@ -544,11 +544,11 @@ export function CustomerAccountPlanTab({
                   className="mt-1.5 normal-case tracking-normal"
                 />
               </label>
-              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                 Plan owner
                 <OptionalMark />
-                <PeopleSelect value={draft.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, owner })} allowUnassigned={false} className="mt-1.5 normal-case tracking-normal" />
-              </label>
+                <PeopleSelect ariaLabel="Plan owner" value={draft.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, owner })} allowUnassigned={false} className="mt-1.5 normal-case tracking-normal" />
+              </div>
             </div>
 
             <div className="my-5 border-t border-border-light" />
@@ -610,11 +610,11 @@ export function CustomerAccountPlanTab({
                       <label className="sr-only" htmlFor={`account-plan-action-${action.id}`}>Action {index + 1} (optional)</label>
                       <input id={`account-plan-action-${action.id}`} value={action.action} onChange={(e) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, action: e.target.value } : item) })} className="h-10 w-full rounded-lg border border-border-light bg-white px-3 text-[13px] font-medium text-text-primary outline-none transition-colors focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/10" />
                       <div className="mt-2 grid items-start gap-2.5 md:grid-cols-3">
-                        <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
+                        <div className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Owner
                           <OptionalMark />
                           <PeopleSelect value={action.owner} options={ownerOptions} onChange={(owner) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, owner } : item) })} allowUnassigned={false} ariaLabel={`Owner for action ${index + 1}`} className="normal-case tracking-normal [&>button]:h-10 [&>button]:py-0" />
-                        </label>
+                        </div>
                         <label className="flex min-w-0 flex-col gap-1 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-text-tertiary">
                           Due date
                           <OptionalMark />

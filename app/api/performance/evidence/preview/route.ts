@@ -4,6 +4,7 @@ import { readPublicFile } from "@/lib/publicFile";
 import { SAMPLE_DOCUMENT_FILES } from "@/lib/sampleDocuments";
 import { EVIDENCE_NAMESPACE } from "@/lib/performanceEvidence";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,8 @@ function resolveSource(source: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const refusal = await moduleReadRefusal("/performance");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await verifiedWorkflowActor(req))) {
     return NextResponse.json({ error: "Sign in to open this file" }, { status: 403 });
   }

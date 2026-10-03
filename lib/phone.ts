@@ -1,26 +1,22 @@
-/**
- * PHONE NUMBERS THAT READ LIKE PHONE NUMBERS, AND REFUSE NONSENSE.
- *
- * Anir, Sep 4, having typed twenty-two digits into a lead's phone box and
- * watched them sit there as one unbroken string: "make sure for all phone
- * number fields show the spaces and also i cant just type in anything it has
- * to know".
- *
- * Two jobs, and they are separate. SPACES are for reading — a number is a
- * sequence people say aloud in groups, and "0908080808098080980809" is
- * unreadable in a way that "090 808 0808" is not. KNOWING is refusing: the box
- * accepted a number half again longer than any phone number on earth and said
- * nothing.
- *
- * THE RULE IS E.164, NOT AN INVENTION. The international standard caps the
- * whole number — country code plus national number — at FIFTEEN digits. That
- * is the only length rule that holds for every country in the picker, so it is
- * the one enforced here. Per-country lengths would need a maintained table for
- * all sixty-one dialling codes, and a wrong entry there refuses a real number,
- * which is worse than accepting a long one.
- */
+import { getCountries, getCountryCallingCode } from "libphonenumber-js";
+import { Metadata } from "libphonenumber-js/core";
+import metadata from "libphonenumber-js/metadata.min.json";
 
 import { splitPhone } from "@/lib/countries";
+
+/** Maintained numbering-plan lengths, shared by input limits and validation. */
+function possibleLengths(dial: string | null | undefined): number[] {
+  const code = phoneDigits(dial);
+  if (code === "1") return [10]; // NANP: area code plus seven-digit subscriber number.
+  const lengths = new Set<number>();
+  for (const country of getCountries()) {
+    if (getCountryCallingCode(country) !== code) continue;
+    const plan = new Metadata(metadata);
+    plan.selectNumberingPlan(country);
+    for (const length of plan.numberingPlan?.possibleLengths() ?? []) lengths.add(length);
+  }
+  return [...lengths].sort((a, b) => a - b);
+}
 
 /** E.164: country code and national number together, at most fifteen digits. */
 export const E164_MAX_DIGITS = 15;
@@ -86,6 +82,11 @@ export function phoneProblem(
   const nat = phoneDigits(number);
   if (!nat) return null; // empty is a different question — see the required check
   const code = phoneDigits(dial);
+  const lengths = possibleLengths(dial);
+  if (lengths.length && !lengths.includes(nat.length)) {
+    const expected = lengths.length === 1 ? `${lengths[0]}` : lengths.join(", ");
+    return `With +${code}, enter ${expected} digits after the country code.`;
+  }
   if (nat.length < MIN_NATIONAL_DIGITS) {
     return `That is only ${nat.length} digit${nat.length === 1 ? "" : "s"} — a phone number needs at least ${MIN_NATIONAL_DIGITS}.`;
   }
@@ -111,5 +112,6 @@ export function isPhoneValid(
  * and then telling them off.
  */
 export function nationalDigitBudget(dial: string | null | undefined): number {
-  return Math.max(0, E164_MAX_DIGITS - phoneDigits(dial).length);
+  const lengths = possibleLengths(dial);
+  return Math.min(lengths.length ? Math.max(...lengths) : E164_MAX_DIGITS, Math.max(0, E164_MAX_DIGITS - phoneDigits(dial).length));
 }

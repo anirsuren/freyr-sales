@@ -1,7 +1,8 @@
+import { teammateHref } from "./entityHref";
 import "server-only";
 import type { VerifiedWorkflowActor } from "./workflowAuthorization";
 import { canViewOfferingMaterial } from "./materialAccess";
-import { canOpenModule } from "./moduleAccessServer";
+import { canOpenModule, canOpenModules } from "./moduleAccessServer";
 import { resolveViewerAccess } from "./viewerAccess";
 import { readRecordTeams, teamFor } from "./recordTeams";
 import { readCustomerGroups } from "./customerGroups";
@@ -69,10 +70,9 @@ export const AGENT_MODULES = {
 } as const;
 export type AgentModule = keyof typeof AGENT_MODULES;
 export async function agentModuleAccess() {
-  const entries = await Promise.all(
-    Object.entries(AGENT_MODULES).map(
-      async ([key, path]) => [key, await canOpenModule(path)] as const,
-    ),
+  const allowed = await canOpenModules(Object.values(AGENT_MODULES));
+  const entries = Object.entries(AGENT_MODULES).map(
+    ([key, path]) => [key, allowed.get(path) === true] as const,
   );
   return Object.fromEntries(entries) as Record<AgentModule, boolean>;
 }
@@ -150,7 +150,7 @@ export async function readAgentWorkspace(
       Promise.resolve(getDb().agentPrefs?.get({ workspaceId: actor.workspaceId, userId: actor.userId })).catch(() => null),
     ]);
     rows=directory.members.filter(member=>member.active && (!mineOnly || member.id===actor.userId)).map(member=>({
-      id:member.id,name:member.name,workspaceRole:member.role,url:`/team?member=${encodeURIComponent(member.id)}`,
+      id:member.id,name:member.name,workspaceRole:member.role,url:teammateHref(member.name),
       ...(member.id===actor.userId && myPrefs?.linkedin_url
         ? { linkedin: myPrefs.linkedin_url, linkedinHeadline: myPrefs.linkedin_headline || undefined, isYou: true }
         : member.id===actor.userId ? { isYou: true } : {}),
@@ -606,7 +606,7 @@ export async function readAgentWorkspace(
         currency,
         sumEstimates(deals.filter((deal) => deal.status !== "Won" && deal.status !== "Lost"), "tcv"),
       ])),
-      tcvNote: "estimatedTcvByCurrency counts every deal, Won included. Open pipeline value is openPipelineTcvByCurrency (not Won or Lost). Quote these; never subtract or add deal figures to get a total.",
+      tcvNote: "Estimated TCV only: estimatedTcvByCurrency includes Won deals; openPipelineTcvByCurrency excludes Won and Lost. Use these for estimated TCV or the Opportunities page's pipeline estimate, never for recorded contract value. Recorded amounts use openValueByCurrency/openValueByOffering. Quote the aggregate for the requested measure rather than adding paginated records.",
       /* PER-CUSTOMER TOTALS, READY MADE. "Which customers have the most
          deals?" paged through all 104 records three times over and took 93
          seconds to count them (found testing Sep 30). The count by account,
@@ -686,13 +686,13 @@ export async function readAgentWorkspace(
           ...(typeof topUsd === "number"
             ? { tiedAtTopUsd: ranked.filter((row) => (row.deal.currency || "USD") === "USD" && row.tcv === topUsd).length }
             : {}),
-          totalsNote: "openBySignMonth, byOwner and largestOpen are computed from every deal in this read with the Opportunities page's own TCV measure; quote these totals rather than adding figures yourself. Pipeline or open value means the open-deal totals (not Won or Lost); estimatedTcvByCurrency and allDealsTcvByCurrency include Won deals. 'entered of' says how many deals carried a figure. When tiedAtTopUsd is more than 1, the biggest deal is a tie: name every deal at that value.",
+          totalsNote: "openBySignMonth, byOwner and largestOpen use the Opportunities page's Estimated TCV measure, not recorded contract value. Quote these only for TCV questions. estimatedTcvByCurrency and allDealsTcvByCurrency include Won deals. 'entered of' says how many deals carried a figure. tiedAtTopUsd counts TCV ties; it does not establish ties in recorded value. Name every deal tied for the requested measure.",
         };
       })(),
       pageUrl: "/opportunities",
       ...(account ? { accountRule: `Only deals attached to ${account.name} by account id or exact company name, the same rule the account page uses. Similar names are different accounts.` } : {}),
       accrualAccess: !accrualsAllowed ? "denied" : accrualPlans ? "available" : "unavailable",
-      basis: "Same unfiltered opportunity records and Estimated TCV measure as the Opportunities page. Do not call every record open unless the status counts support it. Keep currencies separate. These are distinct from pitch-session deals on Pipeline; never sum both views.",
+      basis: "Same permitted opportunity records as the Opportunities page. Two distinct measures are supplied: saved value (recorded contract value) and Estimated TCV (the page's pipeline estimate). Select the measure the question asks for; never relabel an estimate as recorded value. Do not call every record open unless the status counts support it. Keep currencies separate. Pitch-session deals on Pipeline are a separate view; never sum both views.",
     };
     rows = visibleOpportunities
       .map((r) => ({
@@ -777,6 +777,8 @@ export async function readAgentWorkspace(
         assignedToMe: mine(r.owner) || (r.workstreams ?? []).some(w => mine(w.lead) || mine(w.primaryAssignee) || w.contributors.some(mine)) || r.docs.some(d => mine(d.assignedTo)),
         requestedByMe: mine(r.requestedBy),
         status: r.type === "submission" || r.type === "presentation" ? r.deliverableStatus || "Draft" : r.status,
+        workflowStatus: r.status,
+        deliverableStatus: r.type === "submission" || r.type === "presentation" ? r.deliverableStatus || "Draft" : null,
         updatedAt: r.updatedAt || r.requestedAt,
         neededBy: r.neededBy,
         priority: r.priority,
@@ -1172,7 +1174,11 @@ export async function readAgentWorkspace(
       openCount: open.length,
       openValueByCurrency: valueByCurrency,
       openValueByOffering,
-      note: "Open excludes Won and Lost. Values remain in original currency; do not sum currencies or substitute value for Estimated ACV/TCV. openValueByOffering is exact over every open deal; quote it instead of adding up the listed records. A deal on several offerings counts under each, so do not add the offering totals together.",
+      valueMeasures: {
+        recordedContractValue: { recordField: "value", openTotals: "openValueByCurrency", openOfferingTotals: "openValueByOffering", meaning: "Saved amounts only. A saved zero stays zero even when Estimated TCV is positive. This is not proof of booked, signed, billed or collected revenue." },
+        estimatedTcv: { recordField: "estimatedTcv", openTotals: "openPipelineTcvByCurrency", meaning: "Opportunities page's estimate, including its estimate fallbacks. Never substitute it for a requested recorded contract value." },
+      },
+      note: "Open excludes Won and Lost. For recorded contract value, use openValueByCurrency and openValueByOffering, computed from saved value across every permitted open deal before pagination. For Estimated TCV, use openPipelineTcvByCurrency. Keep original currencies separate and never substitute one measure for the other. A deal on several offerings counts under each, so do not add the offering totals together.",
       /* Said once here, not repeated on every one of up to 50 records (it
          cost about 2,500 tokens per lookup, Oct 1). */
       nextStepsMeaning: "Each record's nextSteps is the recorded next steps only. Null means no next step is recorded; a suggestion inferred from stage must be labelled a recommendation, not the recorded next milestone.",

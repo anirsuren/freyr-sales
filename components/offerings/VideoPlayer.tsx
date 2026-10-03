@@ -163,14 +163,18 @@ export function VideoPlayer({
 
   useEffect(() => {
     if (!speedOpen) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: Event) => {
       if (!speedRef.current?.contains(e.target as Node)) setSpeedOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSpeedOpen(false);
     document.addEventListener("pointerdown", onDoc, true);
+    document.addEventListener("click", onDoc, true);
+    document.addEventListener("focusin", onDoc, true);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("pointerdown", onDoc, true);
+      document.removeEventListener("click", onDoc, true);
+      document.removeEventListener("focusin", onDoc, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [speedOpen]);

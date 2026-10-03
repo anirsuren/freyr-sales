@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import Link from "next/link";
 import { normalizeAgentLinks, readableLinkLabel } from "@/lib/agentAnswerPresentation";
 import { injectEntities, entityLink, entitiesForAnswer, type Entity } from "@/components/agent/EntityPills";
@@ -165,7 +165,7 @@ function renderInline(
 }
 
 
-export function AgentResponseMarkdown({
+export const AgentResponseMarkdown = memo(function AgentResponseMarkdown({
   text,
   entities: allEntities = [],
   entityContext = [],
@@ -307,4 +307,4 @@ export function AgentResponseMarkdown({
   }
   flush("ul-end");
   return <>{blocks}</>;
-}
+});

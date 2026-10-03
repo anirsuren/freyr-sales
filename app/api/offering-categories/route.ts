@@ -9,11 +9,13 @@ import {
   memberAssignmentResponse,
   verifiedOwnerAssignment,
 } from "@/lib/memberAssignments";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleCreateRefusal, moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   return NextResponse.json({ offeringCategories: listOfferingCategories() });
 }
 
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
      change it. Falls through to the old role rules while the privilege
      table is not being enforced. */
   {
-    const refusal = await moduleWriteRefusal("/offerings");
+    const refusal = await moduleCreateRefusal("/offerings");
     if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   }
 

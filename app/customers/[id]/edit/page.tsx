@@ -7,12 +7,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { CustomerEditForm } from "@/components/customers/CustomerEditForm";
 import { getDb } from "@/lib/db";
 import { resolveScope, canEditRecord } from "@/lib/recordScope";
-import { moduleWriteRefusal, moduleDeleteRefusal, recordDeleteRefusal } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal, moduleDeleteRefusal, recordDeleteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 import { listCustomerTypes } from "@/lib/offerings";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await requireModuleAccess("/customers");
   const c = await getDb().customers.get((await params).id);
   return { title: c ? `Edit ${c.company_name} · Customers` : "Edit account" };
 }
@@ -31,6 +32,7 @@ export default async function EditCustomerPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/customers");
   const customer = await getDb().customers.get((await params).id);
   /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
      stuck on "Customer not found" after a mode switch: "i should never go

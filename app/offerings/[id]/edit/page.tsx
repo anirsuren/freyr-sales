@@ -23,10 +23,12 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { ViewOnlyNotice } from "@/components/offerings/ViewOnlyNotice";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await requireModuleAccess("/offerings");
   const o = getOffering((await params).id);
   return { title: o ? `Edit ${o.offering_name} · Offerings` : "Edit offering" };
 }
@@ -36,6 +38,7 @@ export default async function EditOfferingPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/offerings");
   const raw = getOffering((await params).id);
   /* A MISSING RECORD LANDS ON ITS LIST, NEVER ON A DEAD END (Anir, Sep 4,
      stuck on "Customer not found" after a mode switch: "i should never go

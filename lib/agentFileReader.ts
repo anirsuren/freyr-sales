@@ -8,6 +8,7 @@ import type JSZip from "jszip";
 import { extractFileContent } from "@/lib/fileText";
 import { withoutProseDashes } from "@/lib/agentProse";
 import { isVertexConfigured, vertexReadParts, type VertexReadPart } from "@/lib/vertex";
+import { assertAgentQaProvider } from "@/lib/agentQaBudget";
 
 /**
  * THE AGENT READS WHATEVER IT IS GIVEN (Anir, Sep 30: "it should be able to read
@@ -215,6 +216,7 @@ export function timedLines(raw: string, offsetSeconds: number): TimedLine[] {
 
 /** Whisper's timed segments for one piece: the second opinion when Gemini is throttled or empty. */
 async function whisperPiece(bytes: Buffer): Promise<TimedLine[] | null> {
+  assertAgentQaProvider("openai");
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
   try {

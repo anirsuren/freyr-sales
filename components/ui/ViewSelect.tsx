@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, LayoutGrid, Rows3, type LucideIcon } from "lucide-react";
@@ -140,14 +142,18 @@ export function ViewSelect<T extends string>({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: PointerEvent) => {
+    const onDown = (event: Event) => {
       const target = event.target as Node;
       if (!boxRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
       }
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      boxRef.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.focus({ preventScroll: true });
     };
     // The portalled menu must follow the button through scrolls and resizes.
     const place = () => {
@@ -159,13 +165,13 @@ export function ViewSelect<T extends string>({
       });
     };
     place();
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDown);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
     return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };
@@ -254,7 +260,7 @@ export function ViewSelect<T extends string>({
             role="menu"
             style={{ top: menuPos.top, right: menuPos.right }}
             className={cn(
-              "popover-in fixed z-[210] w-[132px] overflow-hidden rounded-xl bg-white py-1",
+              "popover-in fixed z-[260] w-[132px] overflow-hidden rounded-xl bg-white py-1",
               POPOVER_SURFACE
             )}
           >

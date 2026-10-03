@@ -463,7 +463,7 @@ export function AppShell({
     /^\/sessions\/[^/]+$/.test(pathname) && !pathname.endsWith("/loading");
   // The agent chat owns the whole pane (ChatGPT-style), like session detail.
   const fullBleed =
-    isSessionDetail || pathname === "/recordings" || pathname === "/agent";
+    isSessionDetail || pathname === "/recordings" || pathname === "/agent" || pathname.startsWith("/agent/chat/");
 
   return (
     <CurrentUserProvider user={currentUser} dataMode={dataMode}>
@@ -520,7 +520,7 @@ export function AppShell({
               // recordings) also fade in on navigation (Suren: "no animation when
               // I click on a session"). Opacity-only — safe for fixed descendants.
               <main
-                key={pathname}
+                key={pathname === "/agent" || pathname.startsWith("/agent/chat/") ? "agent-chat" : pathname}
                 id="main-content"
                 data-tour="page-content"
                 tabIndex={-1}

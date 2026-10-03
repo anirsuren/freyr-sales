@@ -7,8 +7,10 @@ import {
 } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
 import { FdlComponentDetail } from "@/components/fdl/FdlComponentDetail";
+import { canEditOffering } from "@/lib/offeringOwnership";
 import {
   moduleDeleteRefusal,
+  moduleWriteRefusal,
   requireModuleAccess,
 } from "@/lib/moduleAccessServer";
 
@@ -22,6 +24,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireModuleAccess("/components");
   const { id } = await params;
   await initializeLiveOfferings().catch(() => undefined);
   return { title: getFdlComponent(id)?.name ?? "FDL Components" };
@@ -58,9 +61,19 @@ export default async function FdlComponentPage({
      flipping Mock/Real while standing on a record; the honest answer is the
      module's own list, which exists in both worlds. */
   if (!component) redirect("/components");
-  const homes = listOfferings()
-    .filter((offering) => offering.component_ids?.includes(id))
-    .map((offering) => ({ id: offering.id, name: offering.offering_name }));
+  /* WHO MAY TAKE IT OUT OF EACH OFFERING (Anir, Oct 1: "if i add offering
+     here i cant delete it quickly... when i hover i should have a delete
+     button"). The same rule the offering's own PATCH route applies (an admin,
+     or an owner of that offering), so the X shows exactly where it works. */
+  const homes = await Promise.all(
+    listOfferings()
+      .filter((offering) => offering.component_ids?.includes(id))
+      .map(async (offering) => ({
+        id: offering.id,
+        name: offering.offering_name,
+        canUnlink: await canEditOffering(offering),
+      }))
+  );
   // The reverse connection. Suren, Aug 9: "from the FDL component, do you have
   // an option to add offering? No, you don't — you should be able to say which
   // offerings this component goes through."
@@ -69,7 +82,8 @@ export default async function FdlComponentPage({
     name: offering.offering_name,
     connected: !!offering.component_ids?.includes(id),
   }));
-  const canEdit = await canManageOfferings();
+  const canEdit =
+    !(await moduleWriteRefusal("/components")) && (await canManageOfferings());
   /* BOTH GATES THE DELETE ROUTE ASKS, so the button is on screen exactly when
      it works — the privilege table first, then the role rule beside it. */
   const canDelete =

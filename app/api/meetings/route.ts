@@ -94,6 +94,7 @@ export async function POST(req: Request) {
         owner: body.owner ? String(body.owner) : undefined,
         attendees: body.attendees as string[] | undefined,
         presenters: body.presenters as string[] | undefined,
+        docs: Array.isArray(body.docs) ? body.docs : undefined,
         by: me.name,
       });
       return NextResponse.json({ ok: true, meeting, state: await readMeetings() });
@@ -112,11 +113,16 @@ export async function POST(req: Request) {
       await updateMeeting({
         id,
         patch: patch as Record<string, never>,
+        by: me.name,
       });
     } else if (op === "status") {
+      const status = String(body.status ?? "planned");
+      if (!["planned", "completed", "cancelled"].includes(status)) {
+        return NextResponse.json({ error: "Choose Planned, Completed or Cancelled." }, { status: 400 });
+      }
       await setMeetingStatus({
         id,
-        status: String(body.status ?? "planned") as MeetingStatus,
+        status: status as MeetingStatus,
         by: me.name,
       });
     } else if (op === "add-note") {

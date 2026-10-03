@@ -142,6 +142,10 @@ export function isManagerOnlyPath(path: string): boolean {
  * was, which is what keeps a page working while the table is still being
  * filled in.
  *
+ * The matrix applies to Solutioning members too (Anir, Oct 3). Their default
+ * role remains Solutioning-focused, but explicit grants must work just as they
+ * do for BD members. Record and workflow restrictions still apply separately.
+ *
  * WHAT THE TABLE DOES NOT DECIDE. It has a row per module it knows about, and
  * the app has pages it does not — the dashboard, the pipeline, sessions, voice
  * agents. Those keep the old rules rather than being closed by omission,
@@ -157,11 +161,6 @@ export function canAccessModuleWith(
   if (!access) return canAccessModule(path, role);
   // Signing in, settings, notifications: never a module, never gated.
   if (isAlwaysOpen(path)) return true;
-  if (
-    role === "sol_member" &&
-    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
-  )
-    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   const level = access[key] ?? "none";
@@ -183,11 +182,6 @@ export function canWriteModuleWith(
 ): boolean {
   if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
-  if (
-    role === "sol_member" &&
-    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
-  )
-    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   return canEdit(access[key] ?? "none");
@@ -201,11 +195,6 @@ export function canCreateModuleWith(
 ): boolean {
   if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
-  if (
-    role === "sol_member" &&
-    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
-  )
-    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   return canCreate(access[key] ?? "none");
@@ -226,11 +215,6 @@ export function canDeleteModuleWith(
 ): boolean {
   if (role === "admin") return true;
   if (!access) return canAccessModule(path, role);
-  if (
-    role === "sol_member" &&
-    !SOLUTIONS_MODULES.some((modulePath) => isUnder(path, modulePath))
-  )
-    return false;
   const key = moduleKeyForPath(path);
   if (!key) return canAccessModule(path, role);
   return canDelete(access[key] ?? "none");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { analyzeCustomer } from "@/lib/customerAnalysis";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleReadRefusal("/customers");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
   const db = getDb();
   const customer = await db.customers.get((await params).id);
   if (!customer) {

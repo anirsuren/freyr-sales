@@ -351,7 +351,7 @@ export function FdlComponentDetail({
   offerings = [],
 }: {
   component: FdlComponent;
-  homes: { id: string; name: string }[];
+  homes: { id: string; name: string; canUnlink?: boolean }[];
   canEdit: boolean;
   /** Both gates the DELETE route asks, resolved on the server. */
   canDelete?: boolean;
@@ -375,6 +375,8 @@ export function FdlComponentDetail({
    *  instead of silently starting a download. */
   const [previewing, setPreviewing] = useState<FdlFeatureAttachment | null>(null);
   const [pickedOfferings, setPickedOfferings] = useState<string[]>([]);
+  /** The "Part of" offering waiting on its confirm to be taken out. */
+  const [unlinking, setUnlinking] = useState<{ id: string; name: string } | null>(null);
   // THE PICKER IS A LIST LIKE ANY OTHER (Anir, Aug 10: "there should be a
   // search bar here. Also, again, I need a way to see either row view or tiles
   // view"). Thirty-one offerings behind a scroll box meant hunting for the one
@@ -418,6 +420,26 @@ export function FdlComponentDetail({
       router.refresh();
     } catch (caught) {
       toast(caught instanceof Error ? caught.message : "Could not save.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  /** Take this component out of one offering, the picker's own call. */
+  async function unlinkOffering() {
+    if (!unlinking) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/offerings/${unlinking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addComponentId: component.id, connected: false }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not take it out.");
+      toast(`${component.name} is no longer part of ${unlinking.name}.`);
+      setUnlinking(null);
+      router.refresh();
+    } catch (caught) {
+      toast(caught instanceof Error ? caught.message : "Could not take it out.", "error");
     } finally {
       setBusy(false);
     }
@@ -2028,9 +2050,24 @@ export function FdlComponentDetail({
             {homes.length > 0 ? "Part of" : "Not connected to an offering yet."}
           </span>
           {homes.map((h) => (
-            <Link key={h.id} href={`/offerings/${h.id}`} className="min-w-0">
-              <ServiceTag name={h.name} className="text-[12px]" />
-            </Link>
+            <span key={h.id} className="group/home inline-flex min-w-0 items-center">
+              <Link href={`/offerings/${h.id}`} className="min-w-0">
+                <ServiceTag name={h.name} className="text-[12px]" />
+              </Link>
+              {/* Take it out, right where it was added: a red X on hover,
+                  asking first. Only for those the offering lets edit it. */}
+              {h.canUnlink && (
+                <button
+                  type="button"
+                  onClick={() => setUnlinking({ id: h.id, name: h.name })}
+                  aria-label={`Take ${component.name} out of ${h.name}`}
+                  title={`Take ${component.name} out of ${h.name}`}
+                  className="ml-0.5 flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-[color:var(--status-red)] opacity-0 transition-opacity hover:bg-[rgba(220,38,38,0.08)] focus-visible:opacity-100 group-hover/home:opacity-100"
+                >
+                  <X size={12} strokeWidth={2.6} />
+                </button>
+              )}
+            </span>
           ))}
           {canEdit && (
             <button
@@ -2056,6 +2093,23 @@ export function FdlComponentDetail({
               and the same size as the Add button beside it. */}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!unlinking}
+        onClose={() => { if (!busy) setUnlinking(null); }}
+        onConfirm={() => void unlinkOffering()}
+        title={`Take ${component.name} out of ${unlinking?.name ?? "this offering"}?`}
+        body={
+          <>
+            <strong>{component.name}</strong> stops being part of{" "}
+            <strong>{unlinking?.name}</strong>.
+          </>
+        }
+        detail={<>The component, its versions and the customers running it stay, and so does {unlinking?.name}. You can add it back with Add to an offering.</>}
+        subject={unlinking ? { name: unlinking.name, kind: "offering" } : null}
+        confirmLabel="Take it out"
+        busy={busy}
+      />
 
       <ConfirmDialog
         open={confirmDeleteComponent}

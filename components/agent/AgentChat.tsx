@@ -1,10 +1,14 @@
 "use client";
+import { MentionedText } from "./MentionedText";
+import { EntityComposer } from "./EntityComposer";
 import { requestAgentResponse } from "@/lib/agentStreamClient";
 import { useTypewriter, trimStreamingLink } from "./useTypewriter";
 import { replaceAppBrowserUrl } from "@/lib/modeUrl";
 
 import { useEffect, useRef, useState, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { addMockModePrefix, isMockModePath, stripMockModePrefix } from "@/lib/modeUrl";
 import {
   KnowledgePanel,
   KnowledgeRailButton,
@@ -33,7 +37,7 @@ import {
 import { sentFromWhatsApp } from "@/lib/messageVia";
 import { mergeConversationChanges } from "@/lib/conversationChanges";
 import { putConversations } from "@/lib/saveConversations";
-import { useEntityIndex, type Entity } from "@/components/agent/EntityPills";
+import { useEntityIndexState, type Entity } from "@/components/agent/EntityPills";
 import { AgentResponseMarkdown } from "@/components/agent/AgentResponseMarkdown";
 import { ActionCard } from "@/components/agent/ActionCard";
 import type { PendingActionPayload } from "@/lib/agentActionsShared";
@@ -53,7 +57,7 @@ import {
 } from "@/components/agent/useAgentAttachments";
 import { PendingAttachmentChips, SentAttachmentChips } from "@/components/agent/AttachmentChips";
 
-type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
+type Msg = { role: "user" | "agent"; text: string; ts: number; suggestions?: string[]; entityContext?: string[]; selectedEntities?: Entity[]; pendingAction?: PendingActionPayload; /** Door the message came through; absent means the app. */ via?: "whatsapp"; /** Files sent with a user message. */ attachments?: SentAttachment[] };
 type OfferingContext = { id: string; name: string };
 type Convo = {
   id: string;
@@ -158,7 +162,7 @@ function TypedAgentReply({ text, active, entities, entityContext, onReveal }: {
   text: string;
   active: boolean;
   entities: Entity[];
-  entityContext?: string[];
+  entityContext?: string[]; selectedEntities?: Entity[];
   onReveal: () => void;
 }) {
   const shown = useTypewriter(text, active);
@@ -170,7 +174,6 @@ function TypedAgentReply({ text, active, entities, entityContext, onReveal }: {
 
 export function AgentChat({
   initialAsk,
-  initialConversation,
   initialOffering,
   offeringsOnly = false,
 }: {
@@ -180,15 +183,33 @@ export function AgentChat({
   offeringsOnly?: boolean;
 } = {}) {
   const currentUser = useCurrentUser();
+  const pathname = usePathname() || "/agent";
+  const searchParams = useSearchParams();
+  const barePath = stripMockModePrefix(pathname);
+  const routeConversation = barePath.startsWith("/agent/chat/")
+    ? decodeURIComponent(barePath.slice("/agent/chat/".length))
+    : searchParams.get("conversation") || "";
+  const chatHref = (id: string) => {
+    const path = `/agent/chat/${encodeURIComponent(id)}`;
+    return isMockModePath(pathname) ? addMockModePrefix(path) : path;
+  };
+  function openChat(id: string | null) {
+    const destination = id ? chatHref(id) : isMockModePath(pathname) ? "/mock-mode/agent" : "/agent";
+    window.history.pushState(window.history.state, "", destination);
+    setActiveId(id);
+    setMobileHistoryOpen(false);
+  }
+
   // Names of customers, contacts, offerings, components, teammates and
   // reports, so the assistant's answers render them as pills, not grey text.
-  const entities = useEntityIndex();
+  const { entities, ready: entitiesReady } = useEntityIndexState(true);
   const firstName = firstNameForUser(currentUser);
   const storageKey = userScopedStorageKey(KEY, currentUser.id);
   const [convos, setConvos] = useState<Convo[]>([]);
   const [loadedStorageKey, setLoadedStorageKey] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [selectedEntities, setSelectedEntities] = useState<Entity[]>([]);
   const [typingReply, setTypingReply] = useState<{ conversationId: string; ts: number } | null>(null);
   const [streamingPreview, setStreamingPreview] = useState<{ conversationId: string; text: string } | null>(null);
   const [connectionErrorId, setConnectionErrorId] = useState<string | null>(null);
@@ -223,6 +244,7 @@ export function AgentChat({
      progress; read on the server; sent with the next message. */
   const attach = useAgentAttachments();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const comingUpCounts = (() => {
     const list = comingUp?.reminders ?? [];
@@ -384,19 +406,23 @@ export function AgentChat({
     loadedStorageKey === storageKey ? convos : EMPTY_CONVOS;
   const active = visibleConvos.find((c) => c.id === activeId) || null;
 
-  // The dock's “Open full chat” link names the exact conversation. Local
-  // history may arrive first and account history later, so wait for either
-  // source to contain it before selecting and clearing the hand-off URL.
-  const openedConversationRef = useRef("");
+  // Apply each route once, after its history has loaded. Message updates must
+  // not reselect the old URL while a new conversation is receiving its reply.
+  const appliedChatRouteRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!initialConversation || initialAsk || loadedStorageKey !== storageKey) return;
-    const handoff = `${currentUser.id}:${initialConversation}`;
-    if (openedConversationRef.current === handoff) return;
-    if (!visibleConvos.some((conversation) => conversation.id === initialConversation)) return;
-    openedConversationRef.current = handoff;
-    setActiveId(initialConversation);
-    replaceAppBrowserUrl("/agent");
-  }, [currentUser.id, initialAsk, initialConversation, loadedStorageKey, storageKey, visibleConvos]);
+    if ((initialAsk && !routeConversation) || loadedStorageKey !== storageKey) return;
+    const routeKey = `${storageKey}:${barePath}:${routeConversation}`;
+    if (appliedChatRouteRef.current === routeKey) return;
+    if (routeConversation && !visibleConvos.some(c => c.id === routeConversation)) return;
+    appliedChatRouteRef.current = routeKey;
+    setActiveId(routeConversation || null);
+    if (routeConversation && !barePath.startsWith("/agent/chat/")) {
+      replaceAppBrowserUrl(`/agent/chat/${encodeURIComponent(routeConversation)}`);
+    }
+  }, [routeConversation, barePath, initialAsk, loadedStorageKey, storageKey, visibleConvos]);
+  useEffect(() => {
+    document.title = `${active?.title || "New chat"} · Freyr Sales Intelligence`;
+  }, [active?.title]);
 
   function handoffInternalNavigation(event: ReactMouseEvent<HTMLDivElement>) {
     const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
@@ -558,7 +584,7 @@ export function AgentChat({
                 // Keep a meaningful title once we have one; until then, take it
                 // from the first message that isn't just a greeting.
                 title: c.title || derivedTitle,
-                messages: [...c.messages, { role: "user", text, ts: Date.now(), ...(sentFiles.length ? { attachments: sentFiles } : {}) }],
+                messages: [...c.messages, { role: "user", text, selectedEntities, ts: Date.now(), ...(sentFiles.length ? { attachments: sentFiles } : {}) }],
                 updated: Date.now(),
               }
             : c
@@ -603,6 +629,7 @@ export function AgentChat({
               ?.messages.map((mm) => ({ role: mm.role, text: mm.text })) || [];
         const requestBody = {
             message: text,
+            selectedEntities: (selectedEntities.length ? selectedEntities : [...(active?.messages||[])].reverse().find(m=>m.selectedEntities?.length)?.selectedEntities || []).map(({kind,id})=>({kind,id})),
             stream: true,
             conversationId: id,
             history: prior,
@@ -661,6 +688,11 @@ export function AgentChat({
           save(storageKey, next);
           return next;
         });
+        // Persist the completed reply before changing routes: route remounts
+        // must never abort a new conversation while its answer is streaming.
+        if (activeConversationRef.current === id) {
+          replaceAppBrowserUrl(`/agent/chat/${encodeURIComponent(id)}`);
+        }
       } catch {
         if (activeUserIdRef.current !== requestUserId) return;
         setStreamingPreview(null);
@@ -678,6 +710,8 @@ export function AgentChat({
       activeId,
       sending,
       visibleConvos,
+      selectedEntities,
+      active,
       currentUser.id,
       loadedStorageKey,
       storageKey,
@@ -689,10 +723,11 @@ export function AgentChat({
   );
 
   function newChat(nextOffering: OfferingContext | null = null) {
-    setActiveId(null);
+    openChat(null);
     setPendingExcluded([]);
     setPendingOffering(nextOffering);
     setInput("");
+    requestAnimationFrame(() => composerRef.current?.focus({ preventScroll: true }));
   }
 
   function clearOfferingContext() {
@@ -737,7 +772,6 @@ export function AgentChat({
       newConversation: true,
       offering: initialOffering ?? null,
     });
-    replaceAppBrowserUrl("/agent");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, initialAsk, initialOffering, loadedStorageKey, storageKey]);
 
@@ -755,7 +789,7 @@ export function AgentChat({
       save(storageKey, next);
       return next;
     });
-    if (activeId === id) setActiveId(null);
+    if (activeId === id) newChat();
   }
 
   const historyPanel = (<>
@@ -788,8 +822,13 @@ export function AgentChat({
                 <ul className="space-y-0.5 mb-1.5">
                   {group.items.map((c) => (
                     <li key={c.id} className="group relative">
-                      <button
-                        onClick={() => { setActiveId(c.id); setMobileHistoryOpen(false); }}
+                      <Link
+                        href={chatHref(c.id)}
+                        onClick={(event) => {
+                          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                          event.preventDefault();
+                          openChat(c.id);
+                        }}
                         /* The stamp costs a little title width, so hover gives
                            back the untruncated title alongside the full date. */
                         title={[c.title || "New chat", c.channel === "whatsapp" ? "From WhatsApp" : "", c.updated ? dayAndTime(c.updated) : ""]
@@ -808,7 +847,7 @@ export function AgentChat({
                           <MessageSquareText size={15} strokeWidth={1.7} className="shrink-0" />
                         )}
                         <span className="truncate">{c.title || "New chat"}</span>
-                      </button>
+                      </Link>
                       {c.updated ? (
                         <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-text-tertiary">
                           {listStamp(c.updated)}
@@ -913,7 +952,22 @@ export function AgentChat({
             </div>
           </div>
         )}
-        {!active || active.messages.length === 0 ? (
+        {(Boolean(routeConversation || activeId) && (loadedStorageKey !== storageKey || !entitiesReady)) ? (
+          <div className="flex-1 px-4 py-8 sm:px-8" role="status" aria-label="Loading chat">
+            <div className="mx-auto max-w-[1200px] space-y-6 motion-safe:animate-pulse">
+              <div className="ml-auto h-16 w-2/3 rounded-2xl bg-blue-light" />
+              <div className="flex gap-3">
+                <span className="h-8 w-8 shrink-0 rounded-lg bg-blue-light" />
+                <div className="flex-1 space-y-3 rounded-2xl border border-border-light bg-surface px-5 py-6">
+                  <div className="h-3 w-4/5 rounded bg-border-light" />
+                  <div className="h-3 w-full rounded bg-border-light" />
+                  <div className="h-3 w-3/5 rounded bg-border-light" />
+                </div>
+              </div>
+            </div>
+            <span className="sr-only">Loading chat</span>
+          </div>
+        ) : !active || active.messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-6">
             <span
               className="w-12 h-12 rounded-2xl bg-blue-primary text-white flex items-center justify-center mb-4 rise-in"
@@ -1055,7 +1109,7 @@ export function AgentChat({
                       <div className="flex flex-col items-end">
                         {msg.attachments?.length ? <SentAttachmentChips files={msg.attachments} /> : null}
                         <div className="max-w-[78%] bg-blue-primary text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap shadow-sm">
-                          {msg.text}
+                          {<MentionedText text={msg.text} selected={msg.selectedEntities} entities={entities} />}
                         </div>
                         <span className="mt-1 mr-1 inline-flex items-center gap-1 text-[11px] tabular-nums text-text-tertiary">
                           {sentFromWhatsApp(msg, active.messages[i + 1], active.channel) && (
@@ -1123,7 +1177,7 @@ export function AgentChat({
         )}
 
         {/* The footer reserves its own space; the floating controls never cover a reply. */}
-        <div className="relative z-10 shrink-0 px-3 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-white via-white to-white/0">
+        <div data-agent-composer-footer className="relative z-10 shrink-0 px-3 sm:px-6 pb-4 pt-2 bg-[var(--white)]">
           <div className="mx-auto w-full max-w-[1200px]">
             {active && active.messages.length > 0 && (active.messages.at(-1)?.suggestions?.length ?? 0) > 0 && !sending && (
               <div key={active.messages.at(-1)?.ts} className="flex flex-nowrap gap-2 mb-3 overflow-x-auto no-scrollbar py-1">
@@ -1154,7 +1208,7 @@ export function AgentChat({
                 attach.addFiles(e.dataTransfer.files);
               }}
               className={cn(
-                "flex items-end gap-3 bg-white border border-border rounded-2xl px-4 py-3 shadow-[0_4px_24px_-8px_rgba(20,45,80,0.2)] focus-within:border-blue-primary focus-within:shadow-[0_4px_24px_-8px_rgba(0,112,243,0.25)] transition-all",
+                "flex items-center gap-2 bg-white border border-border rounded-[28px] px-3 py-2 shadow-[0_4px_24px_-8px_rgba(20,45,80,0.2)] focus-within:border-blue-primary focus-within:shadow-[0_4px_24px_-8px_rgba(0,112,243,0.25)] transition-all",
                 dragging && "border-blue-primary bg-blue-light/40"
               )}
             >
@@ -1173,44 +1227,18 @@ export function AgentChat({
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Add files"
                 title="Add a file: PDF, Office, picture, recording or video"
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-text-secondary hover:text-blue-primary hover:bg-blue-light/60 transition-colors"
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-text-secondary hover:text-blue-primary hover:bg-blue-light/60 transition-colors"
               >
                 <Paperclip size={16} strokeWidth={2} />
               </button>
-              <textarea
-                onPaste={(e) => {
-                  if (e.clipboardData.files.length) {
-                    e.preventDefault();
-                    attach.addFiles(e.clipboardData.files);
-                  }
-                }}
-                value={input}
-                autoFocus
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send(input);
-                  }
-                }}
-                rows={1}
-                aria-label="Message the agent"
-                placeholder={
-                  offeringContext
-                    ? `Ask about ${offeringContext.name}…`
-                    : offeringsOnly
-                    ? "Ask about an offering, a market, or an uploaded document…"
-                    : "Ask about your work or anything in the app…"
-                }
-                className="flex-1 bg-transparent outline-none focus:shadow-none focus-visible:shadow-none resize-none text-[14px] text-text-primary placeholder:text-text-tertiary py-1.5 max-h-40"
-              />
+              <EntityComposer editorRef={composerRef} autoFocus value={input} onChange={setInput} entities={entities} selected={selectedEntities} onSelected={setSelectedEntities} onSend={()=>send(input)} onFiles={attach.addFiles} placeholder="Ask about your work…" />
               <button
                 onClick={() => send(input)}
                 disabled={(!input.trim() && !attach.sendable) || attach.uploading || sending}
                 aria-label="Send"
                 title={attach.uploading ? "Waiting for the upload to finish" : undefined}
                 className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                  "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors",
                   (input.trim() || attach.sendable) && !attach.uploading && !sending
                     ? "bg-blue-primary text-white hover:bg-blue-hover"
                     : "bg-border-light text-text-tertiary"

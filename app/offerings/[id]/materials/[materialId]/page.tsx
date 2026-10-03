@@ -3,6 +3,7 @@ import { StandaloneMaterialViewer } from "@/components/offerings/StandaloneMater
 import { getCurrentUser } from "@/lib/currentUser";
 import { redactAgentOnlyMaterials } from "@/lib/materialAccess";
 import { getOffering } from "@/lib/offerings";
+import { requireModuleAccess } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string; materialId: string }>;
 }) {
+  await requireModuleAccess("/offerings");
   const { id, materialId } = await params;
   const offering = getOffering(id);
   const material = offering?.materials.find((item) => item.id === materialId);
@@ -28,6 +30,7 @@ export default async function MaterialPage({
   params: Promise<{ id: string; materialId: string }>;
   searchParams: Promise<{ embed?: string; member?: string }>;
 }) {
+  await requireModuleAccess("/offerings");
   const { id, materialId } = await params;
   const { embed, member } = await searchParams;
   const offering = getOffering(id);

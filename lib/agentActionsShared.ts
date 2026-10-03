@@ -182,8 +182,47 @@ export function parseDay(value: unknown, now = new Date(), zone = "UTC"): string
     const month = { q1: 2, q2: 5, q3: 8, q4: 11 }[endOf[1] as "q1" | "q2" | "q3" | "q4"];
     return day(new Date(Date.UTC(year, month + 1, 0)));
   }
+  // JavaScript assigns yearless dates such as "Oct30" to 2001. Resolve those
+  // to their next occurrence on the person's calendar; preserve a stated year.
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const named = /^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*(\d{1,2})(?:,?\s*(\d{4}))?$/.exec(lower);
+  const dayNamed = /^(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:,?\s*(\d{4}))?$/.exec(lower);
+  const numeric = /^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?$/.exec(lower);
+  if (named || dayNamed || numeric) {
+    const monthName = named?.[1] ?? dayNamed?.[2];
+    const month = monthName ? months.indexOf(monthName.slice(0, 3)) + 1 : Number(numeric?.[1]);
+    const date = Number(named?.[2] ?? dayNamed?.[1] ?? numeric?.[2]);
+    const explicitYear = named?.[3] ?? dayNamed?.[3] ?? numeric?.[3];
+    const valid = (year: number) => {
+      const candidate = new Date(Date.UTC(year, month - 1, date));
+      return candidate.getUTCFullYear() === year && candidate.getUTCMonth() === month - 1 && candidate.getUTCDate() === date;
+    };
+    const format = (year: number) => `${year}-${String(month).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+    if (explicitYear) {
+      const year = Number(explicitYear);
+      return valid(year) ? format(year) : null;
+    }
+    for (let year = base.getUTCFullYear(); year <= base.getUTCFullYear() + 8; year++) {
+      if (valid(year) && format(year) >= ymd) return format(year);
+    }
+    return null;
+  }
   const parsed = new Date(raw);
-  if (!Number.isNaN(parsed.getTime())) return day(parsed);
+  if (!Number.isNaN(parsed.getTime())) {
+    // Date.parse also defaults punctuation/ordinal variants without a year to
+    // 2001, so keep those on the same upcoming-date rule.
+    if (parsed.getFullYear() === 2001 && !/\b\d{4}\b/.test(raw)) {
+      const month = parsed.getMonth() + 1;
+      const date = parsed.getDate();
+      for (let year = base.getUTCFullYear(); year <= base.getUTCFullYear() + 8; year++) {
+        const candidate = new Date(Date.UTC(year, month - 1, date));
+        const result = `${year}-${String(month).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+        if (candidate.getUTCMonth() === month - 1 && result >= ymd) return result;
+      }
+      return null;
+    }
+    return day(parsed);
+  }
   return null;
 }
 

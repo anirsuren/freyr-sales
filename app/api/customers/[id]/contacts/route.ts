@@ -1,3 +1,5 @@
+import { phoneProblem } from "@/lib/phone";
+import { splitPhone } from "@/lib/countries";
 import { NextRequest, NextResponse } from "next/server";
 import { getDataMode } from "@/lib/dataMode";
 import { getDb } from "@/lib/db";
@@ -54,6 +56,12 @@ export async function POST(
   }
 
   const body = await request.json().catch(() => null);
+  if (typeof body?.phone === "string" && body.phone.trim()) {
+    const { dial, number } = splitPhone(body.phone);
+    const error = phoneProblem(dial, number);
+    if (error) return NextResponse.json({ error }, { status: 400 });
+  }
+
   const fullName = optionalString(body?.full_name, 120);
   if (!fullName) {
     return NextResponse.json(

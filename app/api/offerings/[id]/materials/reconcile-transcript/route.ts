@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireModuleAccess } from "@/lib/moduleAccessServer";
+import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
+import { canEditOffering } from "@/lib/offeringOwnership";
 import { materialTextEntry, saveMaterialText } from "@/lib/materialText";
 import { reconcileTranscripts } from "@/lib/videoTranscribe";
 
@@ -19,8 +20,13 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await requireModuleAccess("/offerings");
   const { id } = await params;
+  await initializeLiveOfferings();
+  const offering = getOffering(id);
+  if (!offering) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!(await canEditOffering(offering)))
+    return NextResponse.json({ error: "You cannot edit this offering." }, { status: 403 });
+
   const body = (await request.json().catch(() => null)) as {
     videoPath?: string;
     transcriptPath?: string;
@@ -32,6 +38,11 @@ export async function POST(
       { ok: false, error: "videoPath and transcriptPath are both required" },
       { status: 400 }
     );
+  if (!videoPath.startsWith(`${id}/`) || !transcriptPath.startsWith(`${id}/`))
+    return NextResponse.json(
+      { error: "Both files must belong to this offering." },
+      { status: 403 }
+    );
 
   const [video, owner] = await Promise.all([
     materialTextEntry(videoPath).catch(() => null),
@@ -42,6 +53,11 @@ export async function POST(
   // are already stored separately and the assistant can read both.
   if (!video?.text || !owner?.text)
     return NextResponse.json({ ok: true, reconciled: false, reason: "not ready" });
+  if (video.offeringId !== id || owner.offeringId !== id)
+    return NextResponse.json(
+      { error: "Both files must belong to this offering." },
+      { status: 403 }
+    );
 
   const merged = await reconcileTranscripts(video.text, owner.text);
   if (!merged)

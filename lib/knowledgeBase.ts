@@ -1,4 +1,5 @@
 import "server-only";
+import { documentPassages } from "./documentPassages";
 
 import {
   listOfferings,
@@ -62,6 +63,8 @@ export type KnowledgePassage = {
   /** ZIP provenance; both names are shown in citations when governance allows. */
   archiveFilename?: string;
   archiveMember?: string;
+  /** Original extracted page/slide label, never a retrieval-part number. */
+  sourceLocation?: string;
 };
 
 /** How much of an uploaded file goes into one passage. Small enough that a
@@ -69,30 +72,6 @@ export type KnowledgePassage = {
  *  the answer — a deck cut into single bullets loses the context that makes
  *  the bullet mean anything. */
 const CHUNK = 1100;
-
-/** Split a file's text at paragraph boundaries, never mid-sentence. */
-function chunkText(text: string): string[] {
-  const out: string[] = [];
-  let buf = "";
-  for (const para of text.split(/\n{1,}/)) {
-    const line = para.trim();
-    if (!line) continue;
-    if (buf.length + line.length + 1 > CHUNK && buf) {
-      out.push(buf);
-      buf = "";
-    }
-    // A single paragraph longer than a chunk (a wall-of-text PDF page) is cut
-    // on whitespace rather than dropped.
-    if (line.length > CHUNK) {
-      for (const piece of line.match(new RegExp(`[\\s\\S]{1,${CHUNK}}(\\s|$)`, "g")) || [])
-        out.push(piece.trim());
-      continue;
-    }
-    buf = buf ? `${buf}\n${line}` : line;
-  }
-  if (buf) out.push(buf);
-  return out.filter(Boolean);
-}
 
 /** Everything the assistant may quote, built fresh from the live store.
  *
@@ -205,20 +184,21 @@ export function buildKnowledgeBase(
           contentDate?: string,
           member?: string
         ) => {
-          const chunks = chunkText(text);
+          const chunks = documentPassages(text, CHUNK);
           const date = effectiveSourceDate(contentDate, uploadedAt);
           chunks.forEach((chunk, i) => {
             const part = chunks.length > 1
-              ? ` (part ${i + 1} of ${chunks.length})`
+              ? ` (retrieval part ${i + 1} of ${chunks.length}, not a slide/page number)`
               : "";
             out.push({
               id: `${m.id}#${member ? `archive:${member}:` : ""}${i}`,
               kind: "file",
               title: `${m.label}${member ? ` › ${member}` : ""}${part}`,
               href: openHref,
+              ...(chunk.location ? { sourceLocation: chunk.location } : {}),
               text: member
-                ? `From archive "${doc.filename}", member "${member}", uploaded to ${o.offering_name}:\n${chunk}`
-                : `From "${doc.filename}", a ${m.kind} uploaded to ${o.offering_name}:\n${chunk}`,
+                ? `From archive "${doc.filename}", member "${member}", uploaded to ${o.offering_name}:\n${chunk.text}`
+                : `From "${doc.filename}", a ${m.kind} uploaded to ${o.offering_name}:\n${chunk.text}`,
               ...(date
                 ? { sourceDate: date.iso, sourceDateKind: date.kind }
                 : {}),
@@ -397,6 +377,7 @@ export function knowledgeBlock(
     .map(
       (p, i) => {
         const provenance = [
+          p.sourceLocation && `Original document location: ${p.sourceLocation}`,
           p.archiveFilename && p.archiveMember
             ? `Archive: ${p.archiveFilename}; member: ${p.archiveMember}`
             : "",

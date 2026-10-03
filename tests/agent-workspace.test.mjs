@@ -456,6 +456,32 @@ test("managed-team scope includes teammates and excludes other owners before agg
  } finally {mocks['./performance'].readPerformance=oldPerf;mocks['./opportunities'].readOpportunities=oldOpp;}
 });
 
+test("recorded opportunity totals preserve zeros independently of TCV across currencies and pagination", async () => {
+ const original = mocks['./opportunities'].readOpportunities;
+ const deals = Array.from({length:72}, (_, i) => ({
+  id:`metric-${i}`, name:`Metric ${i}`, owner:'Rep', status:'Qualify',
+  currency:i < 70 ? 'USD' : 'EUR', value:i < 70 ? 10 : 0,
+  estimatedTcv:i < 70 ? 100 : 200, offeringLabels:['Selected offering'],
+ }));
+ deals.push({id:'won',status:'Won',owner:'Rep',value:9000,estimatedTcv:12000,currency:'USD',offeringLabels:['Selected offering']});
+ deals.push({id:'lost',status:'Lost',owner:'Rep',value:8000,estimatedTcv:11000,currency:'USD',offeringLabels:['Selected offering']});
+ mocks['./opportunities'].readOpportunities = async () => ({opportunities:deals});
+ try {
+  const first = JSON.parse(await readAgentWorkspace(actor,'opportunities'));
+  const second = JSON.parse(await readAgentWorkspace(actor,'opportunities','',false,50));
+  assert.equal(first.records.length,50);
+  assert.equal(first.summary.openCount,72);
+  assert.deepEqual(first.summary.openValueByCurrency,{USD:700,EUR:0});
+  assert.deepEqual(first.summary.openValueByOffering,{'Selected offering':{USD:700,EUR:0}});
+  assert.equal(first.summary.openPipelineTcvByCurrency.USD.total,7000);
+  assert.equal(first.summary.openPipelineTcvByCurrency.EUR.total,400);
+  assert.deepEqual(second.summary,first.summary,'Totals must not change on page two');
+  assert.equal(first.summary.valueMeasures.recordedContractValue.recordField,'value');
+  assert.equal(first.summary.valueMeasures.recordedContractValue.openTotals,'openValueByCurrency');
+  assert.match(first.summary.tcvNote,/never for recorded contract value/);
+ } finally { mocks['./opportunities'].readOpportunities = original; }
+});
+
 test('team contracts include linked team deals even with an outside legal owner',async()=>{
  const p=mocks['./performance'].readPerformance,o=mocks['./opportunities'].readOpportunities,c=mocks['./contracts'].readContracts;
  mocks['./performance'].readPerformance=async()=>({groups:[{id:'t',head:'Rep',members:['Colleague']}]});

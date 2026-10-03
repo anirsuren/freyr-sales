@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import {
   useEffect,
   useId,
@@ -166,7 +168,7 @@ export function LookupField({
       setActive(-1);
       setLoading(false);
     };
-    const onDown = (event: MouseEvent) => {
+    const onDown = (event: Event) => {
       const target = event.target as Node;
       if (inputRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       shut();
@@ -190,13 +192,13 @@ export function LookupField({
         )
       );
     };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDown);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", shut);
     return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", onScroll, { capture: true });
       window.removeEventListener("resize", shut);
     };
@@ -243,7 +245,7 @@ export function LookupField({
             role="listbox"
             aria-label={`${ariaLabel} suggestions`}
             onMouseDown={(event) => event.preventDefault()}
-            className="menu-in z-[110] flex flex-col overflow-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            className="menu-in z-[260] flex flex-col overflow-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
             style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
           >
             <div className="min-h-0 flex-1 overflow-y-auto p-1.5">

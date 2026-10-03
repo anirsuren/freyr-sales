@@ -1,5 +1,9 @@
 "use client";
 
+import { AvatarStack } from "@/components/ui/AvatarStack";
+
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import { Fragment, useState, useRef, useEffect, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
@@ -132,11 +136,7 @@ export type ColorOption = {
    * mark is unmistakably the person who runs this thing.
    */
   crown?: boolean;
-  /**
-   * The people inside this option, as an overlapping face stack on the right
-   * ("I also need to see all the people in the group"). Up to five, then a
-   * count. Purely a picture — the option's own words still say how many.
-   */
+  /** The people inside this option. Up to five faces, then a count. */
   faces?: string[];
   badge?: string;
   badgeColor?: string;
@@ -502,7 +502,7 @@ export function ColorSelect({
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: PointerEvent) => {
+    const onDoc = (e: Event) => {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -538,13 +538,13 @@ export function ColorSelect({
         return floatingMenuStyle(rect, width, 260);
       });
     };
-    document.addEventListener("pointerdown", onDoc, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDoc);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", onDoc, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
     };
@@ -803,7 +803,7 @@ export function ColorSelect({
           role="listbox"
           aria-label={ariaLabel}
           className={cn(
-            "menu-in z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]",
+            "menu-in z-[260] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]",
             detailed ? "p-2" : "p-1.5"
           )}
           style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
@@ -978,27 +978,7 @@ export function ColorSelect({
                     </span>
                   )}
                 </span>
-                {o.faces && o.faces.length > 0 && (
-                  // The group, drawn. It sits opposite the owner's face so the
-                  // row reads "this person runs it, these people are in it".
-                  <span className="flex shrink-0 items-center">
-                    {o.faces.slice(0, 5).map((name, i) => (
-                      <Avatar
-                        key={`${name}-${i}`}
-                        name={name}
-                        className={cn(
-                          "h-[22px] w-[22px] text-[8px] ring-2 ring-white",
-                          i > 0 && "-ml-2"
-                        )}
-                      />
-                    ))}
-                    {o.faces.length > 5 && (
-                      <span className="-ml-2 grid h-[22px] w-[22px] place-items-center rounded-full bg-surface text-[9px] font-bold text-text-secondary ring-2 ring-white tnum">
-                        +{o.faces.length - 5}
-                      </span>
-                    )}
-                  </span>
-                )}
+                {o.faces && o.faces.length > 0 && <AvatarStack names={o.faces} avatarClassName="h-[22px] w-[22px] text-[8px]" />}
                 {o.badge && (
                   <span
                     className="semantic-color-pill shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold"
@@ -1196,7 +1176,7 @@ export function MultiColorSelect({
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: PointerEvent) => {
+    const onDoc = (e: Event) => {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -1232,13 +1212,13 @@ export function MultiColorSelect({
         return floatingMenuStyle(rect, width, 260);
       });
     };
-    document.addEventListener("pointerdown", onDoc, true);
-    document.addEventListener("keydown", onKey);
+    const stopOutside = listenForOutsideInteraction(onDoc);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
-      document.removeEventListener("pointerdown", onDoc, true);
-      document.removeEventListener("keydown", onKey);
+      stopOutside();
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
     };
@@ -1459,7 +1439,7 @@ export function MultiColorSelect({
           aria-multiselectable="true"
           aria-label={ariaLabel}
           className={cn(
-            "menu-in z-[110] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            "menu-in z-[260] overflow-y-auto overflow-x-hidden rounded-lg border border-border-light bg-white p-1.5 shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           )}
           style={{ ...menuStyle, ...menuMotionVars(menuStyle) }}
         >

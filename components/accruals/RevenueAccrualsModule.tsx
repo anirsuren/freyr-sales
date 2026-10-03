@@ -28,6 +28,8 @@ import {
   AlertTriangle,
   CalendarRange,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Coins,
   Download,
   Lock,
@@ -2669,7 +2671,7 @@ export function RevenueAccrualsModule({
                       <button
                         type="button"
                         disabled={sourceDeals.length === 0}
-                        className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border-light px-3 text-[12px] font-semibold text-blue-primary hover:bg-surface disabled:cursor-default disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
+                        className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border-light bg-white px-3 text-[12.5px] font-semibold text-text-secondary transition-colors hover:border-blue-subtle hover:text-blue-primary disabled:cursor-default disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-primary"
                         onClick={() => setClosedDeviationCards(previous => {
                           const next = new Set(previous);
                           const close = sourceDeals.every(deal => !previous.has(deal.opportunityId));
@@ -2680,7 +2682,11 @@ export function RevenueAccrualsModule({
                           return next;
                         })}
                       >
-                        <ChevronDown size={14} aria-hidden="true" className={cn("transition-transform motion-reduce:transition-none", sourceDeals.length > 0 && sourceDeals.every(deal => !closedDeviationCards.has(deal.opportunityId)) && "rotate-180")} />
+                        {sourceDeals.length > 0 && sourceDeals.every(deal => !closedDeviationCards.has(deal.opportunityId)) ? (
+                          <ChevronsDownUp size={14} strokeWidth={2.2} aria-hidden="true" />
+                        ) : (
+                          <ChevronsUpDown size={14} strokeWidth={2.2} aria-hidden="true" />
+                        )}
                         {sourceDeals.length > 0 && sourceDeals.every(deal => !closedDeviationCards.has(deal.opportunityId)) ? "Close all" : "Open all"}
                       </button>
                   }

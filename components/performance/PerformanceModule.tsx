@@ -627,7 +627,9 @@ export function PerformanceModule({
         title={
           goalModal?.editing ? `Edit goal: ${goalModal.editing.name}` : "New goal"
         }
-        size="wide"
+        size="workflow"
+        dialogClassName="h-[90vh]"
+        bodyClassName="flex flex-col !overflow-hidden"
       >
         {goalModal && (
           <GoalEditorFields
@@ -4119,7 +4121,8 @@ function GoalEditorFields({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto space-y-4 pr-1">
       <div>
         <label className="text-[12px] font-semibold text-text-primary">
           Goal name<RequiredMark />
@@ -4258,27 +4261,16 @@ function GoalEditorFields({
             value={withCommas(target)}
             onChange={(e) =>
               setTarget(
-                unit === "currency"
-                  ? expandMoneyShorthand(e.target.value, { integer: true })
-                  : e.target.value
+                expandMoneyShorthand(e.target.value, { integer: unit !== "percent" })
               )
             }
             placeholder={unit === "currency" ? "e.g. 100M" : unit === "percent" ? "e.g. 45" : "e.g. 1,200"}
             className="h-10 w-full rounded-lg border border-border-light bg-white pl-8 pr-3 text-[13px] outline-none tnum focus:border-blue-subtle"
           />
         </div>
-        {target.trim() !== "" &&
-          (parsedTarget !== null ? (
-            <p className="mt-1 text-[11px] text-text-tertiary tnum">
-              = {fmtAmount(unit || "count", parsedTarget)}
-            </p>
-          ) : (
-            <p className="mt-1 whitespace-nowrap text-[11px] text-error">
-              {unit === "currency"
-                ? "Numbers only, e.g. 100m"
-                : "Numbers only, e.g. 1200"}
-            </p>
-          ))}
+        {target.trim() !== "" && parsedTarget === null && (
+          <p className="mt-1 text-[11px] text-error">Enter a valid number.</p>
+        )}
       </div>
       <div
         className={cn(
@@ -4384,7 +4376,6 @@ function GoalEditorFields({
                             }
                             className="h-[34px] shrink-0 rounded-lg border border-border-light bg-white px-2.5 text-[12.5px] outline-none focus:border-blue-subtle"
                           />
-                          <DateEcho value={m.date} />
                         </label>
                         <label className="flex shrink-0 flex-col gap-1">
                           <span className="text-[10px] font-bold uppercase tracking-[0.05em] text-text-tertiary">
@@ -4406,11 +4397,7 @@ function GoalEditorFields({
                                       ? {
                                           ...x,
                                           amount:
-                                            unit === "currency"
-                                              ? expandMoneyShorthand(e.target.value, {
-                                                  integer: true,
-                                                })
-                                              : e.target.value,
+                                            expandMoneyShorthand(e.target.value, { integer: unit !== "percent" }),
                                         }
                                       : x
                                   )
@@ -4511,7 +4498,8 @@ function GoalEditorFields({
         </div>
       )}
 
-      <div className="flex items-center justify-end">
+      </div>
+      <div className="flex shrink-0 items-center justify-end border-t border-border-light pt-4 mt-4">
         <button
           type="button"
           disabled={

@@ -153,6 +153,7 @@ export function ContractsModule({
   goals,
   meName,
   canWrite,
+  editableContractIds,
   canCreate = false,
   canDelete = false,
   live = true,
@@ -168,6 +169,7 @@ export function ContractsModule({
   goals: { id: string; name: string; year: number; type?: string }[];
   meName: string;
   canWrite: boolean;
+  editableContractIds?: string[];
   /** May write a new contract. Editing an existing one only needs WRITE. */
   canCreate?: boolean;
   /** May remove one. The routes ask CREATE-level access to delete (see
@@ -391,11 +393,12 @@ export function ContractsModule({
             : `${c.name} no longer counts towards ${target.label}.`;
     if (await post({ op: "save", contract: { ...base, ...change } }, done)) setUnlinking(null);
   }
-  /** The same question the Edit button asks. Every writer may change every
-   *  contract today; per-contract rights narrow this one place. */
-  const mayChange = (_contract: Contract) => canWrite;
+  /** The same question the Edit button asks: write here, and this one. */
+  const mayChange = (c: Contract) =>
+    canWrite && (!editableContractIds || editableContractIds.includes(c.id));
 
   function openEditor(contract?: Contract, fromDeal?: DealOption) {
+    if (contract && (!canWrite || (editableContractIds && !editableContractIds.includes(contract.id)))) return;
     /* A fresh shelf per editor session: files staged for one contract must
        never ride along onto the next one opened. */
     setDocs([]);
@@ -585,19 +588,21 @@ export function ContractsModule({
           offeringLabel: editing.offeringLabel || undefined,
           value: Math.round(Number(editing.value) || 0),
           status: editing.status,
-          startDate: editing.startDate || undefined,
-          endDate: editing.endDate || undefined,
-          signedOn: editing.signedOn || undefined,
-          owner: editing.owner || undefined,
-          documentUrl: editing.documentUrl || undefined,
-          signedBy: editing.signedBy || undefined,
+          /* Empty values must reach the server: omitted keys preserve the
+             previous value when an existing contract is merged. */
+          startDate: editing.startDate,
+          endDate: editing.endDate,
+          signedOn: editing.signedOn,
+          owner: editing.owner,
+          documentUrl: editing.documentUrl,
+          signedBy: editing.signedBy,
           /* The handle and the posted date are the server's to write, never
              the browser's — echoing them back is exactly how the deal flow
              learned to double-count. It finds the standing entry itself. */
           goalLink: editing.goalId
             ? { goalId: editing.goalId, person: editing.goalPerson || undefined }
             : undefined,
-          note: editing.note || undefined,
+          note: editing.note,
           /* Only the ones that landed; a failed row is still on screen saying
              so, and carrying it would attach a document with nothing behind
              it. Editing keeps whatever is already on the record. */
@@ -1543,7 +1548,7 @@ export function ContractsModule({
                           </span>
                         )}
                       </span>
-                      {canWrite && (
+                      {canWrite && (!editableContractIds || editableContractIds.includes(c.id)) && (
                         <span className="ml-auto flex items-center gap-1.5">
                           <button
                             type="button"

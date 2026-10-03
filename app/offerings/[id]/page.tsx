@@ -34,7 +34,7 @@ import {
   redactUnverifiedOfferingPeople,
 } from "@/lib/assignablePeople";
 import { canManageOfferings, getRole, isAdmin } from "@/lib/role";
-import { moduleWriteRefusal } from "@/lib/moduleAccessServer";
+import { moduleWriteRefusal, requireModuleAccess } from "@/lib/moduleAccessServer";
 import {
   customerFamiliesPresent,
 } from "@/lib/customerFamilies";
@@ -81,6 +81,7 @@ import { isSomebody, teammateHref } from "@/lib/entityHref";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  await requireModuleAccess("/offerings");
   const o = getOffering((await params).id);
   return { title: o ? `${o.offering_name} · Offerings` : "Offering" };
 }

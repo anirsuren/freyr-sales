@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { listMarkets, createMarket, commitOfferingsChange } from "@/lib/offerings";
 import { canManageOfferings } from "@/lib/role";
+import { moduleCreateRefusal, moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   return NextResponse.json({ markets: listMarkets() });
 }
 
 export async function POST(req: Request) {
+  const refusal = await moduleCreateRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   if (!(await canManageOfferings()))
     return NextResponse.json(
       { error: "View only: admin access required" },

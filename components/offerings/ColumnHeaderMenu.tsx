@@ -1,5 +1,7 @@
 "use client";
 
+import { listenForOutsideInteraction } from "@/components/ui/outsideInteraction";
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -95,7 +97,7 @@ export function ColumnHeaderMenu({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: MouseEvent) => {
+    const onDown = (event: Event) => {
       const target = event.target as Node;
       if (panelRef.current?.contains(target)) return;
       if (buttonRef.current?.contains(target)) return;
@@ -104,10 +106,10 @@ export function ColumnHeaderMenu({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    document.addEventListener("pointerdown", onDown, true);
+    const stopOutside = listenForOutsideInteraction(onDown);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("pointerdown", onDown, true);
+      stopOutside();
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -160,7 +162,7 @@ export function ColumnHeaderMenu({
             role="dialog"
             aria-label={`${label} column options`}
             style={{ top: box.top, left: box.left, width: 232 }}
-            className="menu-in fixed z-[140] overflow-hidden rounded-xl border border-border-light bg-white text-left shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
+            className="menu-in fixed z-[260] overflow-hidden rounded-xl border border-border-light bg-white text-left shadow-[0_18px_48px_-16px_rgba(15,23,42,0.34)]"
           >
             {canSort && (
               <div className="py-1">

@@ -8,13 +8,17 @@ import {
   FileSignature,
   Layers,
   Package,
-  Paperclip,
+  Newspaper,
   Target,
   UserPlus,
   Presentation,
 } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
+import { readEntityFacts, type EntityFact } from "@/lib/agentEntityVisuals";
+import { fileFormatIcon } from "./EntityFacts";
+import { teammateHref } from "@/lib/entityHref";
+import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
 
 /**
  * EVERY NAME THE ASSISTANT SAYS BECOMES A PILL.
@@ -29,6 +33,7 @@ import { Avatar } from "@/components/ui/Avatar";
  */
 
 export type EntityKind =
+  | "marketItem"
   | "trackedPerson"
   | "marketCompany"
   | "solution"
@@ -49,16 +54,23 @@ export type Entity = {
   id: string;
   kind: EntityKind;
   logoUrl?: string;
+  subtitle?: string;
+  details?: string[];
+  description?: string;
+  fileType?: string;
+  subtitleFacts?: EntityFact[];
+  facts?: EntityFact[];
 };
 
 /** Where a pill of each kind goes, and what it wears. */
 const KIND: Record<
   EntityKind,
   {
-    href: (id: string) => string;
+    href: (id: string, name?: string) => string;
     mark: (name: string, logoUrl?: string) => ReactNode;
   }
 > = {
+  marketItem: { href: id=>id, mark:()=> <Newspaper size={13} strokeWidth={1.9} className="shrink-0" /> },
   trackedPerson: {
     href: (id) => id,
     mark: (name, photoUrl) => <Avatar name={name} src={photoUrl} className="w-4 h-4 text-[7px] shrink-0" />,
@@ -91,14 +103,14 @@ const KIND: Record<
   },
   contact: {
     href: (id) => `/contacts/${encodeURIComponent(id)}`,
-    mark: (name) => (
-      <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    mark: (name, photoUrl) => (
+      <Avatar name={name} src={photoUrl} className="w-4 h-4 text-[7px] shrink-0" />
     ),
   },
   person: {
-    href: (id) => `/team?member=${encodeURIComponent(id)}`,
-    mark: (name) => (
-      <Avatar name={name} className="w-4 h-4 text-[7px] shrink-0" />
+    href: (_id, name) => teammateHref(name) || "/team",
+    mark: (name, photoUrl) => (
+      <Avatar name={name} src={photoUrl} className="w-4 h-4 text-[7px] shrink-0" />
     ),
   },
   /**
@@ -153,9 +165,37 @@ const KIND: Record<
         ? `/offerings/${encodeURIComponent(offeringId)}?tab=materials&material=${encodeURIComponent(materialId)}`
         : `/offerings/${encodeURIComponent(offeringId)}?tab=materials`;
     },
-    mark: () => <Paperclip size={13} strokeWidth={1.9} className="shrink-0" />,
+    mark: () => { const Icon = fileFormatIcon(); return <Icon size={13} strokeWidth={1.9} className="shrink-0" />; },
   },
 };
+
+/** Reuse the reply-pill destination for picker previews. External assets must
+ * remain HTTPS links; opening a preview never changes mention selection. */
+export function entityDestination(entity: Pick<Entity, "kind" | "id"> & Partial<Pick<Entity, "name">>): string | null {
+  const href = KIND[entity.kind].href(entity.id, entity.name);
+  if (entity.kind === "marketItem" || entity.kind === "trackedPerson") {
+    try { return new URL(href).protocol === "https:" ? href : null; } catch { return null; }
+  }
+  return href;
+}
+
+/** The same record identity in replies, picker results and composed tags. */
+function recordMark(entity: Entity, large = false): ReactNode {
+  const size = large ? "w-8 h-8" : "w-4 h-4 text-[7px]";
+  if (["person", "contact", "trackedPerson", "lead"].includes(entity.kind))
+    return <Avatar name={entity.name} src={entity.logoUrl} className={`${size} shrink-0`} />;
+  if (["company", "marketCompany"].includes(entity.kind))
+    return <CompanyLogo name={entity.name} src={entity.logoUrl} className={`${size} shrink-0`} />;
+  if (entity.kind === "material") {
+    const format = entity.fileType || entity.facts?.find((fact) => fact.kind === "format")?.text;
+    const Icon = fileFormatIcon(format);
+    return <Icon size={large ? 20 : 13} strokeWidth={1.9} data-file-type={format || "FILE"} className="shrink-0" />;
+  }
+  return KIND[entity.kind].mark(entity.name, entity.logoUrl);
+}
+export function EntityMark({ entity, large = false }: { entity: Entity; large?: boolean }) {
+  return <span className={large ? "w-8 h-8 flex items-center justify-center shrink-0 text-blue-primary [&_svg]:w-5 [&_svg]:h-5" : "inline-flex items-center shrink-0"}>{recordMark(entity, large)}</span>;
+}
 
 /**
  * Left margin only. A right margin looks fine in isolation and wrong in a
@@ -229,7 +269,7 @@ export function entitiesForAnswer(text: string, entities: Entity[], context: str
     groups.set(name, [...(groups.get(name) || []), entity]);
   }
   return [...groups.values()].flatMap(group => {
-    const explicit = group.filter(e => urls.has(KIND[e.kind].href(e.id)));
+    const explicit = group.filter(e => urls.has(KIND[e.kind].href(e.id, e.name)));
     // `/leads` identifies a list, not the organization named by the link.
     // Preserve a same-named company candidate so entityLink can render the
     // company logo and canonical account destination.
@@ -239,10 +279,28 @@ export function entitiesForAnswer(text: string, entities: Entity[], context: str
         group.find((entity) => entity.kind === "marketCompany");
       if (company) return [company, ...explicit];
     }
-    const linked = explicit.length ? explicit : group.filter(e => context.includes(KIND[e.kind].href(e.id)));
-    const destinations = new Set(linked.map(e => KIND[e.kind].href(e.id)));
+    const linked = explicit.length ? explicit : group.filter(e => context.includes(KIND[e.kind].href(e.id, e.name)));
+    const destinations = new Set(linked.map(e => KIND[e.kind].href(e.id, e.name)));
     return destinations.size === 1 ? linked : group;
   });
+}
+
+// One answer uses the same immutable candidate array for every text/emphasis
+// span. Build its name matcher once, rather than sorting the entire workspace
+// and compiling a large regex for each span on every streamed update. Weak
+// keys let old answers/indexes disappear when their React render is released.
+const nameMatchers = new WeakMap<Entity[], { re: RegExp; byName: Map<string, Entity> } | null>();
+function nameMatcher(entities: Entity[]) {
+  if (nameMatchers.has(entities)) return nameMatchers.get(entities)!;
+  const usable = unambiguousEntities(entities).filter(e =>
+    !["component", "offering", "report", "material"].includes(e.kind) || /[\s.]/.test(e.name)
+  );
+  const matcher = usable.length ? {
+    re: new RegExp(`\\b(${usable.map(e => escapeRe(e.name)).join("|")})(?![\\w-])`, "g"),
+    byName: new Map(usable.map(e => [e.name, e])),
+  } : null;
+  nameMatchers.set(entities, matcher);
+  return matcher;
 }
 
 export function injectEntities(
@@ -270,10 +328,8 @@ export function injectEntities(
    */
   // Single-word catalogue titles can also be ordinary words or another company's product.
   // Require an explicit entity link for those; do not infer identity from capitalization.
-  const usable = unambiguousEntities(entities).filter(e =>
-    !["component", "offering", "report", "material"].includes(e.kind) || /[\s.]/.test(e.name)
-  );
-  if (!usable.length) return [text];
+  const matcher = nameMatcher(entities);
+  if (!matcher) return [text];
 
   /**
    * CASE-SENSITIVE ON PURPOSE (Anir, Aug 15: "that's not supposed to be
@@ -288,17 +344,15 @@ export function injectEntities(
    * capital is the signal that a name is meant. "Freya.Register" still
    * matches; "registrations" in a sentence no longer does.
    */
-  const re = new RegExp(
-    `\\b(${usable.map((e) => escapeRe(e.name)).join("|")})(?![\\w-])`,
-    "g",
-  );
+  const { re, byName } = matcher;
+  re.lastIndex = 0;
   const out: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
   let k = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
-    const hit = usable.find((e) => e.name === m![1]);
+    const hit = byName.get(m[1]);
     if (hit) {
       const style = KIND[hit.kind];
       // Offerings-only has no customer or contact pages; those pills stay
@@ -320,16 +374,16 @@ export function injectEntities(
         hasPage ? (
           <Link
             key={`${keyBase}-e${k++}`}
-            href={style.href(hit.id)}
+            href={style.href(hit.id, hit.name)}
             {...(hit.kind === "trackedPerson" ? {target:"_blank", rel:"noopener noreferrer"} : {})}
             className={PILL}
           >
-            {style.mark(hit.name, hit.logoUrl)}
+            {recordMark(hit)}
             {m[1]}
           </Link>
         ) : (
           <span key={`${keyBase}-e${k++}`} className={`${PILL} cursor-default`}>
-            {style.mark(hit.name, hit.logoUrl)}
+            {recordMark(hit)}
             {m[1]}
           </span>
         ),
@@ -362,13 +416,13 @@ export function entityLink(href: string, label: string, entities: Entity[], key:
       const style = KIND[company.kind];
       return (
         <Link key={key} href={style.href(company.id)} className={PILL}>
-          {style.mark(company.name, company.logoUrl)}
+          {recordMark(company)}
           {label}
         </Link>
       );
     }
   }
-  const candidates = entities.filter(e => KIND[e.kind].href(e.id) === href || (href === "/team" && e.kind === "person"));
+  const candidates = entities.filter(e => KIND[e.kind].href(e.id, e.name) === href || (e.kind === "person" && (href === "/team" || href === `/team?member=${encodeURIComponent(e.id)}`)));
   const named = candidates.filter(e => e.name.trim().toLocaleLowerCase() === normalizedLabel);
   // Shared list destinations do not identify a person or record. A Team link
   // stays a navigation link; a named teammate gets only their own portrait.
@@ -385,20 +439,24 @@ export function entityLink(href: string, label: string, entities: Entity[], key:
       /^\/contacts\/[^/?#]+\/?$/.test(href) ? "contact" :
       /^\/offerings\/[^/?#]+\/?$/.test(href) ? "offering" :
       /^\/components\/[^/?#]+\/?$/.test(href) ? "component" :
+      /^\/opportunities\/[^/?#]+\/?$/.test(href) ? "deal" :
+      /^\/solutioning\/[^/?#]+\/?$/.test(href) ? "solution" :
+      /^\/market-intel\/[^/?#]+\/?$/.test(href) ? "marketCompany" :
+      /^\/reports(?:\/[^?#]*)?(?:\?[^#]*)?$/.test(href) ? "report" :
       // Short metric names stay out of automatic prose matching, but a direct
       // goal URL identifies the record and should still wear its target icon.
       /^\/performance\/goal\/[^/?#]+\/?$/.test(href) ? "goal" :
-      /^\/team\?member=[^&#]+/.test(href) ? "person" : null;
+      (/^\/team\?member=[^&#]+/.test(href) || /^\/analytics\/reps\/[^/?#]+\/?$/.test(href)) ? "person" : null;
     if (!fallbackKind || !label.trim() || label.startsWith("/")) return null;
     return (
-      <Link key={key} href={href} className={PILL}>
+      <Link key={key} href={fallbackKind === "person" && href.startsWith("/team?") ? teammateHref(label) || href : href} className={PILL}>
         {KIND[fallbackKind].mark(label)}
         {label}
       </Link>
     );
   }
   const style = KIND[entity.kind];
-  return <Link key={key} href={style.href(entity.id)} {...(entity.kind === "trackedPerson" ? {target:"_blank",rel:"noopener noreferrer"} : {})} className={PILL}>{style.mark(entity.name, entity.logoUrl)}{label.startsWith('/') ? entity.name : label}</Link>;
+  return <Link key={key} href={style.href(entity.id, entity.name)} {...((entity.kind === "trackedPerson" || entity.kind === "marketItem") ? {target:"_blank",rel:"noopener noreferrer"} : {})} className={PILL}>{recordMark(entity)}{label.startsWith('/') ? entity.name : label}</Link>;
 }
 
 /**
@@ -409,16 +467,21 @@ export function entityLink(href: string, label: string, entities: Entity[], key:
  * Names of two characters or fewer are dropped: they turn ordinary words into
  * pills.
  */
-export function useEntityIndex(): Entity[] {
+export function useEntityIndexState(includeShortNames = false): { entities: Entity[]; ready: boolean } {
+  const user = useCurrentUser();
+  const identity = `${user.id}:${user.role}`;
+  const [loadedIdentity, setLoadedIdentity] = useState<string | null>(null);
   const [entities, setEntities] = useState<Entity[]>([]);
   useEffect(() => {
+    setLoadedIdentity(null);
+    setEntities([]);
     let alive = true;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const controller = new AbortController();
     let attempts = 0;
     const load = () => fetch("/api/agent/entities", {signal: controller.signal, cache:"no-store"})
       .then((r) => {
-        if (r.status === 401 || r.status === 403) { alive = false; return null; }
+        if (r.status === 401 || r.status === 403) { setLoadedIdentity(identity); alive = false; return null; }
         if (!r.ok) throw new Error("Entity index unavailable");
         return r.json();
       })
@@ -431,6 +494,12 @@ export function useEntityIndex(): Entity[] {
             )
             .map((r) => ({
               name: r.name,
+              subtitle: typeof r.subtitle === "string" ? r.subtitle : undefined,
+              details: Array.isArray(r.details) ? r.details.filter((v: unknown): v is string => typeof v === "string" && Boolean(v.trim())).slice(0, 6) : undefined,
+              description: typeof r.description === "string" ? r.description.slice(0, 180) : undefined,
+              fileType: typeof r.fileType === "string" ? r.fileType : undefined,
+              subtitleFacts: readEntityFacts(r.subtitleFacts),
+              facts: readEntityFacts(r.facts),
               id: r.id,
               kind,
               logoUrl: typeof r.logoUrl === "string" ? r.logoUrl : undefined,
@@ -438,6 +507,7 @@ export function useEntityIndex(): Entity[] {
         const list = [
           ...take(d.companies, "company"),
           ...take(d.marketCompanies, "marketCompany"),
+          ...take(d.marketItems, "marketItem"),
           ...take(d.trackedPeople, "trackedPerson"),
           ...take(d.solutioning, "solution"),
           ...take(d.contacts, "contact"),
@@ -450,12 +520,15 @@ export function useEntityIndex(): Entity[] {
           ...take(d.goals, "goal"),
           ...take(d.people, "person"),
           ...take(d.reports, "report"),
-        ].filter((e) => e.name && e.name.length > 2);
-        list.sort((a, b) => b.name.length - a.name.length);
-        setEntities(list);
+        ].filter((e) => e.name && (includeShortNames || e.name.length > 2));
+        const unique = [...new Map(list.map(entity=>[`${entity.kind}:${entity.id}`,entity])).values()];
+        unique.sort((a, b) => b.name.length - a.name.length);
+        setEntities(unique);
+        setLoadedIdentity(identity);
       })
       .catch(() => {
         if (alive && attempts++ < 3) retry = setTimeout(load, 1000 * 2 ** attempts);
+        else if (alive) setLoadedIdentity(identity);
       });
     void load();
     return () => {
@@ -463,6 +536,10 @@ export function useEntityIndex(): Entity[] {
       controller.abort();
       if (retry) clearTimeout(retry);
     };
-  }, []);
-  return entities;
+  }, [includeShortNames, identity]);
+  return { entities: loadedIdentity === identity ? entities : [], ready: loadedIdentity === identity };
+}
+
+export function useEntityIndex(includeShortNames = false): Entity[] {
+  return useEntityIndexState(includeShortNames).entities;
 }

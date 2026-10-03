@@ -406,7 +406,7 @@ export function PeopleTab({
         <MyEntriesCard
           state={state}
           person={person}
-          run={run}
+          run={canLog ? run : undefined}
           meName={meName}
           focusEntry={focusEntry}
         />

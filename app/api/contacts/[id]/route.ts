@@ -1,3 +1,5 @@
+import { phoneProblem } from "@/lib/phone";
+import { splitPhone } from "@/lib/countries";
 import { NextResponse, type NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { getDataMode } from "@/lib/dataMode";
@@ -30,6 +32,12 @@ export async function PATCH(
   });
   if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
   const body = await request.json().catch(() => null);
+  if (typeof body?.phone === "string" && body.phone.trim()) {
+    const { dial, number } = splitPhone(body.phone);
+    const error = phoneProblem(dial, number);
+    if (error) return NextResponse.json({ error }, { status: 400 });
+  }
+
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid contact change." }, { status: 400 });
   }

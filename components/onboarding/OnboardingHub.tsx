@@ -1,5 +1,6 @@
 "use client";
 
+import { WhatsAppCard } from "@/components/settings/WhatsAppCard";
 import { roleLabel } from "@/components/ui/RoleTag";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -90,8 +91,10 @@ function statusCopy(status: OnboardingStatus) {
 
 export function OnboardingHub({
   offeringsOnly,
+  showPhoneSetup = true,
 }: {
   offeringsOnly: boolean;
+  showPhoneSetup?: boolean;
 }) {
   const [status, setStatus] = useState<OnboardingStatus>("not_started");
   const [currentStep, setCurrentStep] = useState(0);
@@ -170,6 +173,11 @@ export function OnboardingHub({
           remapped by .dark, so in dark mode the card stayed light while its
           text flipped to near-white — an unreadable white slab (Anir, Aug 6:
           "I'm on dark mode, but it shows up like this"). */}
+      {showPhoneSetup && <Card className="mb-6 p-6">
+        <h2 className="mb-2 text-lg font-semibold text-text-primary">Connect your phone</h2>
+        <p className="mb-5 text-sm text-text-secondary">Set up your WhatsApp agent with a QR code. If you skipped this earlier, you can connect here anytime.</p>
+        <WhatsAppCard />
+      </Card>}
       <Card className="relative overflow-hidden border-blue-subtle bg-white p-0">
         <div
           aria-hidden="true"

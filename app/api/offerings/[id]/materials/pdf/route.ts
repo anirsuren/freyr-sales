@@ -8,6 +8,7 @@ import nodePath from "node:path";
 import { getOffering, initializeLiveOfferings } from "@/lib/offerings";
 import { verifiedWorkflowActor } from "@/lib/workflowAuthorization";
 import { canViewOfferingMaterial } from "@/lib/materialAccess";
+import { moduleReadRefusal } from "@/lib/moduleAccessServer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -127,6 +128,9 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const refusal = await moduleReadRefusal("/offerings");
+  if (refusal) return NextResponse.json({ error: refusal }, { status: 403 });
+
   const { id } = await params;
   const actor = await verifiedWorkflowActor(req as never);
   if (!actor)

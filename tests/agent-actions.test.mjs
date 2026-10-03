@@ -84,6 +84,18 @@ test("days are answered on the person's own calendar, and weekday phrases resolv
   assert.equal(shared.parseDay("Monday", now, "Not/AZone"), "2026-09-28");
 });
 
+test("short signing dates use the next calendar occurrence, not JavaScript's year 2001", () => {
+  const now = new Date("2026-09-30T12:00:00Z");
+  const ny = "America/New_York";
+  for (const input of ["oct30", "Oct 30", "Oct 30.", "Oct. 30", "October 30", "30 Oct", "10/30"]) {
+    assert.equal(shared.parseDay(input, now, ny), "2026-10-30", input);
+  }
+  assert.equal(shared.parseDay("Oct 30", new Date("2026-11-01T12:00:00Z"), ny), "2027-10-30");
+  assert.equal(shared.parseDay("Feb 29", now, ny), "2028-02-29");
+  assert.equal(shared.parseDay("Feb 30", now, ny), null);
+  assert.equal(shared.parseDay("Oct 30, 2025", now, ny), "2025-10-30");
+});
+
 
 test("what a person may do is summarised per module from the same checks the gates use", () => {
   const modules = ["/performance", "/opportunities", "/customers", "/leads", "/meetings", "/solutioning", "/market-intel"];
