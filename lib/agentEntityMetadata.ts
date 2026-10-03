@@ -141,7 +141,7 @@ export const leadPickerEntity = (lead: Lead, companyLogoUrl?: string) => ({
   name: lead.name?.trim() || lead.ref || "Unnamed lead",
   ...leadMetadata(lead, companyLogoUrl),
 });
-export const goalMetadata = (g: PrimaryGoal) => visuals(goalMetadataBase(g), [...fact("date", String(g.year)), ...fact("type", g.type)],
+export const goalMetadata = (g: PrimaryGoal) => visuals(goalMetadataBase(g), [...fact("date", String(g.year)), ...fact("goalType", g.type)],
   goalMetadataBase(g).details.map((text) => ({ kind: text.includes("erified") ? "verification" : "target", text })));
 export const solutionMetadata = (r: SolutionRequest, logoUrl?: string) => visuals(solutionMetadataBase(r), fact("company", r.customer, logoUrl), [
   ...fact("reference", r.ref), ...fact("type", join(label(r.type || "request"), r.subtype || label(r.kind))), ...fact("status", label(r.status)),

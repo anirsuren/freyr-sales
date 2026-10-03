@@ -196,6 +196,9 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+### Oct 3 Agent picker visual consistency (local follow-up)
+Goal category icons/colors now share goalTypeVisuals with Performance. Agent facts show goal category chips, matching verification states, country flags, workspace role colors and company-size colors; shared renderers cover full chat and dock pickers. Browser verified all four category hues and customer flags; 18 entity tests and TypeScript pass. These follow-up visuals are separate from the deployment already running.
+
 ### Oct 3 deployment build repair
 Release authorized for dev and production. Corrected missing optional dependency lock entries for Linux npm ci; raised builder-only Node heap to 3 GB after the Docker Next build exhausted 1.5 GB. Runtime sizing is unchanged.
 

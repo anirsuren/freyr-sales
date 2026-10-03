@@ -16,6 +16,7 @@ import {
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { Avatar } from "@/components/ui/Avatar";
 import { readEntityFacts, type EntityFact } from "@/lib/agentEntityVisuals";
+import { typeMeta } from "@/lib/goalTypeVisuals";
 import { fileFormatIcon } from "./EntityFacts";
 import { teammateHref } from "@/lib/entityHref";
 import { useCurrentUser } from "@/components/auth/CurrentUserProvider";
@@ -186,6 +187,14 @@ function recordMark(entity: Entity, large = false): ReactNode {
     return <Avatar name={entity.name} src={entity.logoUrl} className={`${size} shrink-0`} />;
   if (["company", "marketCompany"].includes(entity.kind))
     return <CompanyLogo name={entity.name} src={entity.logoUrl} className={`${size} shrink-0`} />;
+  if (entity.kind === "goal") {
+    const goalType = entity.subtitleFacts?.find(f => f.kind === "goalType" || f.kind === "type")?.text;
+    if (goalType) {
+      const meta = typeMeta(goalType);
+      const Icon = meta.icon;
+      return <Icon size={large ? 20 : 13} style={{ color: meta.color }} className="shrink-0" />;
+    }
+  }
   if (entity.kind === "material") {
     const format = entity.fileType || entity.facts?.find((fact) => fact.kind === "format")?.text;
     const Icon = fileFormatIcon(format);

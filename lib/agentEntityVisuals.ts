@@ -3,7 +3,7 @@ export const ENTITY_FACT_KINDS = [
   "company", "person", "owner", "uploader", "offering", "location", "date", "email", "format",
   "size", "folder", "link", "value", "reference", "status", "version",
   "type", "role", "industry", "features", "target", "priority", "source",
-  "verification", "division", "text",
+  "verification", "division", "goalType", "text",
 ] as const;
 export type EntityFactKind = typeof ENTITY_FACT_KINDS[number];
 export type EntityFact = { kind: EntityFactKind; text: string; logoUrl?: string };

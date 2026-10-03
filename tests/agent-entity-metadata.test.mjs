@@ -104,7 +104,8 @@ test('picker previews share supported destinations and reject unsafe external li
   for(const id of ['javascript:alert(1)','data:text/html,x','http://example.com/news','/news'])assert.equal(entityDestination({kind:'marketItem',id}),null);
   assert.equal(entityDestination({kind:'trackedPerson',id:'https://www.linkedin.com/in/example/'}),'https://www.linkedin.com/in/example/');
   assert.equal(entityDestination({kind:'material',id:'offering:file/1'}),'/offerings/offering?tab=materials&material=file%2F1');
-  assert.equal(entityDestination({kind:'person',id:'member/1'}),'/team?member=member%2F1');
+  assert.equal(entityDestination({kind:'person',id:'member/1',name:'Abhinaya Veeramally'}),'/analytics/reps/abhinaya-veeramally');
+  assert.equal(entityDestination({kind:'person',id:'member/1'}),'/team');
   assert.equal(entityDestination({kind:'company',id:'buyer/1'}),'/customers/buyer%2F1');
 });
 
