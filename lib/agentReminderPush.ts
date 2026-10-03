@@ -1,4 +1,6 @@
 import "server-only";
+import { readCheckIn } from "@/lib/checkInStore";
+import { checkInDue, dailyCheckInMessage } from "@/lib/checkInSchedule";
 import { createClient } from "@supabase/supabase-js";
 import { readPrivileges, accessMapFor } from "@/lib/privileges";
 import { canAccessModuleWith } from "@/lib/moduleAccess";
@@ -9,7 +11,7 @@ import { remindersFor, type AgentReminder, type ReminderAccess } from "@/lib/age
 import { appendAgentNotice, readDurableConversations } from "@/lib/agentConversationStore";
 import { claimReminderNotice, cleanPersonalReminder } from "@/lib/agentPersonalReminders";
 import { zonedInstant } from "@/lib/agentClock";
-import { canSendWhatsApp, sendWhatsAppText, toWhatsAppText, whatsappConfig } from "@/lib/whatsapp";
+import { canSendWhatsApp, chunkWhatsAppText, sendWhatsAppText, toWhatsAppText, whatsappConfig } from "@/lib/whatsapp";
 
 /**
  * THE REMINDER COMES TO THE PHONE (Anir, Sep 30: "if a deadline is coming or
@@ -162,12 +164,15 @@ export async function runReminderPush(options: {
   const logs = new Map<string, Record<string, string>>();
 
   for (const member of members) {
-    const timeZone = await memberTimeZone(member.userId);
+    const schedule = await readCheckIn(member.workspaceId, member.userId);
+    if (schedule && !schedule.enabled) continue;
+    const timeZone = schedule?.timeZone ?? await memberTimeZone(member.userId);
     const hour = Number(
       new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hourCycle: "h23" }).format(now),
     );
     const slots: ReminderSlot[] = options.slot
       ? [options.slot]
+      : schedule ? (options.force || checkInDue(now, schedule) ? ["morning"] : [])
       : (Object.keys(SLOT_HOUR) as ReminderSlot[]).filter((s) => options.force || SLOT_HOUR[s] === hour);
     const day = localDay(now, timeZone).ymd;
     const firstName = member.name.trim().split(/\s+/)[0] || member.name;
@@ -176,7 +181,7 @@ export async function runReminderPush(options: {
       continue;
     }
     for (const slot of slots) {
-      if (!options.force && SLOT_HOUR[slot] !== hour) {
+      if (!options.force && (schedule ? slot !== "morning" || !checkInDue(now, schedule) : SLOT_HOUR[slot] !== hour)) {
         outcomes.push({ person: member.name, slot, day, items: 0, result: "not-their-hour", detail: `${hour}:00 in ${timeZone}` });
         continue;
       }
@@ -189,11 +194,14 @@ export async function runReminderPush(options: {
       }
       const reminders = await remindersFor({ person: member.name, timeZone, access: await accessFor(member), now, scope: { workspaceId: member.workspaceId, userId: member.userId } });
       const items = itemsFor(slot, reminders);
-      if (!items.length) {
+      if (!items.length && !schedule) {
         outcomes.push({ person: member.name, slot, day, items: 0, result: "nothing-due" });
         continue;
       }
-      const text = toWhatsAppText(reminderMessage(firstName, slot, items), process.env.AUTH_PUBLIC_ORIGIN || process.env.APP_PUBLIC_URL || "");
+      const message = schedule
+        ? dailyCheckInMessage(firstName, items)
+        : reminderMessage(firstName, slot, items);
+      const text = toWhatsAppText(message, process.env.AUTH_PUBLIC_ORIGIN || process.env.APP_PUBLIC_URL || "");
       const last = await lastInboundAt(member);
       if (!last || now.getTime() - last > WINDOW_MS) {
         outcomes.push({
@@ -206,7 +214,11 @@ export async function runReminderPush(options: {
         outcomes.push({ person: member.name, slot, day, items: items.length, result: "no-sender", text, detail: options.dryRun ? "dry run" : "no WhatsApp token on this server" });
         continue;
       }
-      const sent = await sendWhatsAppText(member.number, text, config!);
+      let sent: Awaited<ReturnType<typeof sendWhatsAppText>> = { ok: true };
+      for (const chunk of chunkWhatsAppText(text)) {
+        sent = await sendWhatsAppText(member.number, chunk, config!);
+        if (!sent.ok || sent.skipped) break;
+      }
       if (sent.ok && !sent.skipped) {
         log[key] = now.toISOString();
         outcomes.push({ person: member.name, slot, day, items: items.length, result: "sent", text });
@@ -367,7 +379,7 @@ export function armReminderPush(): void {
     const now = Date.now();
     const meetings = now - lastMeetings >= 5 * 60_000 - 5_000;
     if (meetings) lastMeetings = now;
-    const digest = now - lastDigest >= 10 * 60_000 - 5_000;
+    const digest = now - lastDigest >= 60_000 - 5_000;
     if (digest) lastDigest = now;
     void (async () => {
       try {

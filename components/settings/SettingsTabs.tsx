@@ -26,6 +26,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeSetting } from "@/components/settings/ThemeSetting";
 import { FontPresetSetting } from "@/components/settings/FontPresetSetting";
+import { DailyCheckIn } from "@/components/settings/DailyCheckIn";
 import { WhatsAppCard } from "@/components/settings/WhatsAppCard";
 import { requestProductTourStart } from "@/components/onboarding/productTourEvents";
 import { CrmSyncCard } from "@/components/settings/CrmSyncCard";
@@ -65,6 +66,7 @@ const ROLE_CHANGE_OPTIONS: ColorOption[] = [
 ];
 
 const TABS = [
+  { key: "check-in", label: "Daily check-in", description: "Your WhatsApp briefing", icon: Bell },
   { key: "workspace", label: "Workspace", description: "Data and behavior", icon: Settings2 },
   { key: "profile", label: "Profile", description: "Identity and preferences", icon: UserRound },
   /* APPEARANCE AND INTEGRATIONS ARE THEIR OWN SECTIONS (Anir, Sep 27: "an
@@ -1079,6 +1081,8 @@ export function SettingsTabs({
           <h2 className="text-[18px] font-semibold text-text-primary">{activeTab.label}</h2>
           <p className="mt-0.5 text-[12.5px] text-text-secondary">{activeTab.description}</p>
         </div>
+
+      {tab === "check-in" && <DailyCheckIn />}
 
       {tab === "workspace" && (
         <div className="tab-panel stagger space-y-5">
