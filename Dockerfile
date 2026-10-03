@@ -16,7 +16,7 @@ WORKDIR /app
 ARG NEXT_BUILD_CPUS=1
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_BUILD_CPUS=${NEXT_BUILD_CPUS} \
-    NODE_OPTIONS=--max-old-space-size=1536
+    NODE_OPTIONS=--max-old-space-size=3072
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

@@ -196,6 +196,9 @@ what was written back, `deleted-test-customers.json`).
 
 ## 9. Current state — Jul 31, 2026
 
+### Oct 3 deployment build repair
+Release authorized for dev and production. Corrected missing optional dependency lock entries for Linux npm ci; raised builder-only Node heap to 3 GB after the Docker Next build exhausted 1.5 GB. Runtime sizing is unchanged.
+
 ### Oct 3: Enter chat selection regression fixed
 Reproduced live: adding a message reran route selection against /agent and cleared activeId, hiding Thinking and the reply. AgentChat now applies each loaded route once instead of on every history mutation. Verified real new-chat and follow-up answers submitted with Enter, New Chat autofocus, and browser Back. TypeScript and diff whitespace checks pass.
 
